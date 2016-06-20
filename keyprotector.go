@@ -1,10 +1,10 @@
 package keystore
 
 import (
-	"errors"
-	"hash"
 	"crypto/sha1"
 	"crypto/x509/pkix"
+	"errors"
+	"hash"
 )
 
 const supportedPrivateKeyAlgorithmOid = "1.3.6.1.4.1.42.2.17.1.1"
@@ -14,7 +14,10 @@ const saltLen = 20
 const reasonUnsupportedPrivateKeyAlgorithm = "Unsupported private key algorithm"
 const reasonUnrecoverablePrivateKey = "Unrecoverable private key"
 
+// ErrUnsupportedPrivateKeyAlgorithm indicates unsupported private key algorithm
 var ErrUnsupportedPrivateKeyAlgorithm = errors.New(reasonUnsupportedPrivateKeyAlgorithm)
+
+// ErrUnrecoverablePrivateKey indicates unrecoverable private key content (often means wrong password usage)
 var ErrUnrecoverablePrivateKey = errors.New(reasonUnrecoverablePrivateKey)
 
 type keyInfo struct {
@@ -45,7 +48,7 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 	encrKeyLen := len(keyInfo.PrivateKey) - saltLen - kp.md.Size()
 	numRounds := encrKeyLen / kp.md.Size()
 
-	if encrKeyLen % kp.md.Size() != 0 {
+	if encrKeyLen%kp.md.Size() != 0 {
 		numRounds++
 	}
 
@@ -56,8 +59,14 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		kp.md.Write(kp.passwdBytes)
-		kp.md.Write(digest)
+		_, err := kp.md.Write(kp.passwdBytes)
+		if err != nil {
+			return nil, ErrUnrecoverablePrivateKey
+		}
+		_, err = kp.md.Write(digest)
+		if err != nil {
+			return nil, ErrUnrecoverablePrivateKey
+		}
 		digest = kp.md.Sum(nil)
 		kp.md.Reset()
 		copy(xorKey[xorOffset:], digest)
@@ -69,14 +78,20 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 		plainKey[i] = encrKey[i] ^ xorKey[i]
 	}
 
-	kp.md.Write(kp.passwdBytes)
-	kp.md.Write(plainKey)
+	_, err := kp.md.Write(kp.passwdBytes)
+	if err != nil {
+		return nil, ErrUnrecoverablePrivateKey
+	}
+	_, err = kp.md.Write(plainKey)
+	if err != nil {
+		return nil, ErrUnrecoverablePrivateKey
+	}
 	digest = kp.md.Sum(nil)
 	kp.md.Reset()
 
 	digestOffset := saltLen + encrKeyLen
 	for i := 0; i < len(digest); i++ {
-		if digest[i] != keyInfo.PrivateKey[digestOffset + i] {
+		if digest[i] != keyInfo.PrivateKey[digestOffset+i] {
 			return nil, ErrUnrecoverablePrivateKey
 		}
 	}

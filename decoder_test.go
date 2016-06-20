@@ -1,11 +1,11 @@
 package keystore
 
 import (
-	"testing"
 	"bytes"
+	"crypto/rand"
 	"encoding/binary"
 	"reflect"
-	"crypto/rand"
+	"testing"
 )
 
 func TestReadUint16(t *testing.T) {
@@ -14,8 +14,8 @@ func TestReadUint16(t *testing.T) {
 		number uint16
 		err    error
 	}
-	var readUint32Table = func() [] readUint16Item {
-		var table [] readUint16Item
+	var readUint32Table = func() []readUint16Item {
+		var table []readUint16Item
 		table = append(table, readUint16Item{nil, 0, ErrIo})
 		table = append(table, readUint16Item{[]byte{}, 0, ErrIo})
 		table = append(table, readUint16Item{[]byte{1}, 0, ErrIo})
@@ -31,7 +31,7 @@ func TestReadUint16(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r:bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
 		number, err := ksd.readUint16()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -48,8 +48,8 @@ func TestReadUint32(t *testing.T) {
 		number uint32
 		err    error
 	}
-	var readUint32Table = func() [] readUint32Item {
-		var table [] readUint32Item
+	var readUint32Table = func() []readUint32Item {
+		var table []readUint32Item
 		table = append(table, readUint32Item{nil, 0, ErrIo})
 		table = append(table, readUint32Item{[]byte{}, 0, ErrIo})
 		table = append(table, readUint32Item{[]byte{1, 2, 3}, 0, ErrIo})
@@ -65,7 +65,7 @@ func TestReadUint32(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r:bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
 		number, err := ksd.readUint32()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -82,8 +82,8 @@ func TestReadUint64(t *testing.T) {
 		number uint64
 		err    error
 	}
-	var readUint64Table = func() [] readUint64Item {
-		var table [] readUint64Item
+	var readUint64Table = func() []readUint64Item {
+		var table []readUint64Item
 		table = append(table, readUint64Item{nil, 0, ErrIo})
 		table = append(table, readUint64Item{[]byte{}, 0, ErrIo})
 		table = append(table, readUint64Item{[]byte{1, 2, 3}, 0, ErrIo})
@@ -99,7 +99,7 @@ func TestReadUint64(t *testing.T) {
 	}()
 
 	for _, tt := range readUint64Table {
-		ksd := keyStoreDecoder{r:bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
 		number, err := ksd.readUint64()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -117,22 +117,25 @@ func TestReadBytes(t *testing.T) {
 		bytes   []byte
 		err     error
 	}
-	var readUint32Table = func() [] readBytesItem {
-		var table [] readBytesItem
+	var readUint32Table = func() []readBytesItem {
+		var table []readBytesItem
 		table = append(table, readBytesItem{nil, 0, nil, nil})
 		table = append(table, readBytesItem{[]byte{1, 2, 3}, 3, []byte{1, 2, 3}, nil})
 		table = append(table, readBytesItem{[]byte{1, 2, 3}, 2, []byte{1, 2}, nil})
 		buf := func() []byte {
-			buf := make([]byte, 10 * 1024)
-			rand.Read(buf)
+			buf := make([]byte, 10*1024)
+			_, err := rand.Read(buf)
+			if err != nil {
+				t.Errorf("Error: %v", err)
+			}
 			return buf
 		}()
-		table = append(table, readBytesItem{buf, 9 * 1024, buf[:9 * 1024], nil})
+		table = append(table, readBytesItem{buf, 9 * 1024, buf[:9*1024], nil})
 		return table
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r:bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
 		bts, err := ksd.readBytes(tt.readLen)
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -149,8 +152,8 @@ func TestReadString(t *testing.T) {
 		string string
 		err    error
 	}
-	var readUint32Table = func() [] readStringItem {
-		var table [] readStringItem
+	var readUint32Table = func() []readStringItem {
+		var table []readStringItem
 		table = append(table, readStringItem{nil, "", ErrIo})
 		table = append(table, readStringItem{[]byte{}, "", ErrIo})
 		table = append(table, readStringItem{[]byte{1, 2, 3}, "", ErrIo})
@@ -163,7 +166,7 @@ func TestReadString(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r:bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
 		str, err := ksd.readString()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)

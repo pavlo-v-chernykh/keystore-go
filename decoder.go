@@ -1,11 +1,11 @@
 package keystore
 
 import (
-	"errors"
+	"encoding/asn1"
 	"encoding/binary"
+	"errors"
 	"io"
 	"time"
-	"encoding/asn1"
 )
 
 const magic uint32 = 0xfeedfeed
@@ -14,23 +14,32 @@ const (
 	version02 uint32 = 2
 )
 const (
-	privateKeyTag uint32 = 1
+	privateKeyTag         uint32 = 1
 	trustedCertificateTag uint32 = 2
 )
 const defaultCertificateType = "X509"
 const bufSize = 4096
 
 const (
-	reasonInvalidKeystoreFormat = "Invalid keystore format"
+	reasonInvalidKeystoreFormat   = "Invalid keystore format"
 	reasonInvalidPrivateKeyFormat = "Invalid private key format"
 )
 
 var order = binary.BigEndian
 
+// ErrIo indicates i/o error
 var ErrIo = errors.New(reasonInvalidKeystoreFormat)
+
+// ErrIncorrectMagic indicates incorrect file magic
 var ErrIncorrectMagic = errors.New(reasonInvalidKeystoreFormat)
+
+// ErrIncorrectVersion indicates incorrect keystore version format
 var ErrIncorrectVersion = errors.New(reasonInvalidKeystoreFormat)
+
+// ErrIncorrectTag indicates incorrect keystore entry tag
 var ErrIncorrectTag = errors.New(reasonInvalidKeystoreFormat)
+
+// ErrIncorrectPrivateKey indicates incorrect private key entry content
 var ErrIncorrectPrivateKey = errors.New(reasonInvalidPrivateKeyFormat)
 
 type keyStoreDecoder struct {
@@ -197,6 +206,7 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password string) (string, 
 	return "", nil, ErrIncorrectTag
 }
 
+// Decode reads and decrypts keystore entries using password
 func Decode(r io.Reader, password string) (*KeyStore, error) {
 	ksd := keyStoreDecoder{r: r}
 	readMagic, err := ksd.readUint32()
