@@ -5,16 +5,11 @@ import (
 	"time"
 )
 
-const (
-	reasonNoSuchEntry        = "No such entry"
-	reasonIncorrectEntryType = "Incorrect entry type"
-)
-
 // ErrNoSuchEntry indicates absence of entry in the keystore
-var ErrNoSuchEntry = errors.New(reasonNoSuchEntry)
+var ErrNoSuchEntry = errors.New("No such entry")
 
 // ErrIncorrectEntryType indicates incorrect entry type addressing
-var ErrIncorrectEntryType = errors.New(reasonIncorrectEntryType)
+var ErrIncorrectEntryType = errors.New("Incorrect entry type")
 
 // KeyStore is a map alias to entry
 type KeyStore map[string]interface{}
@@ -44,7 +39,7 @@ type TrustedCertificateEntry struct {
 }
 
 // GetEntry allows to get entry from KeyStore
-func (ks KeyStore) GetEntry(alias string) (interface{}, error) {
+func (ks KeyStore) getEntry(alias string) (interface{}, error) {
 	entry, ok := ks[alias]
 	if !ok {
 		return nil, ErrNoSuchEntry
@@ -54,7 +49,7 @@ func (ks KeyStore) GetEntry(alias string) (interface{}, error) {
 
 // GetPrivateKeyEntry allows to get private key entry from KeyStore
 func (ks KeyStore) GetPrivateKeyEntry(alias string) (*PrivateKeyEntry, error) {
-	entry, err := ks.GetEntry(alias)
+	entry, err := ks.getEntry(alias)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +62,7 @@ func (ks KeyStore) GetPrivateKeyEntry(alias string) (*PrivateKeyEntry, error) {
 
 // GetTrustedCertificateEntry allows to get TrustedCertificateEntry from KeyStore
 func (ks KeyStore) GetTrustedCertificateEntry(alias string) (*TrustedCertificateEntry, error) {
-	entry, err := ks.GetEntry(alias)
+	entry, err := ks.getEntry(alias)
 	if err != nil {
 		return nil, err
 	}

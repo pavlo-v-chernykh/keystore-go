@@ -2,45 +2,25 @@ package keystore
 
 import (
 	"encoding/asn1"
-	"encoding/binary"
 	"errors"
 	"io"
 	"time"
 )
 
-const magic uint32 = 0xfeedfeed
-const (
-	version01 uint32 = 1
-	version02 uint32 = 2
-)
-const (
-	privateKeyTag         uint32 = 1
-	trustedCertificateTag uint32 = 2
-)
-const defaultCertificateType = "X509"
-const bufSize = 4096
-
-const (
-	reasonInvalidKeystoreFormat   = "Invalid keystore format"
-	reasonInvalidPrivateKeyFormat = "Invalid private key format"
-)
-
-var order = binary.BigEndian
-
 // ErrIo indicates i/o error
-var ErrIo = errors.New(reasonInvalidKeystoreFormat)
+var ErrIo = errors.New("Invalid keystore format")
 
 // ErrIncorrectMagic indicates incorrect file magic
-var ErrIncorrectMagic = errors.New(reasonInvalidKeystoreFormat)
+var ErrIncorrectMagic = errors.New("Invalid keystore format")
 
 // ErrIncorrectVersion indicates incorrect keystore version format
-var ErrIncorrectVersion = errors.New(reasonInvalidKeystoreFormat)
+var ErrIncorrectVersion = errors.New("Invalid keystore format")
 
 // ErrIncorrectTag indicates incorrect keystore entry tag
-var ErrIncorrectTag = errors.New(reasonInvalidKeystoreFormat)
+var ErrIncorrectTag = errors.New("Invalid keystore format")
 
 // ErrIncorrectPrivateKey indicates incorrect private key entry content
-var ErrIncorrectPrivateKey = errors.New(reasonInvalidPrivateKeyFormat)
+var ErrIncorrectPrivateKey = errors.New("Invalid private key format")
 
 type keyStoreDecoder struct {
 	r io.Reader
@@ -133,20 +113,20 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password string)
 	if err != nil {
 		return nil, err
 	}
-	privateKeyLen, err := ksd.readUint32()
+	privKeyLen, err := ksd.readUint32()
 	if err != nil {
 		return nil, err
 	}
-	encodedPrivateKeyContent, err := ksd.readBytes(privateKeyLen)
+	encodedPrivateKeyContent, err := ksd.readBytes(privKeyLen)
 	if err != nil {
 		return nil, err
 	}
-	certificatesCount, err := ksd.readUint32()
+	certCount, err := ksd.readUint32()
 	if err != nil {
 		return nil, err
 	}
 	var chain []Certificate
-	for i := certificatesCount; i > 0; i-- {
+	for i := certCount; i > 0; i-- {
 		cert, err := ksd.readCertificate(version)
 		if err != nil {
 			return nil, err
@@ -207,7 +187,7 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password string) (string, 
 }
 
 // Decode reads and decrypts keystore entries using password
-func Decode(r io.Reader, password string) (*KeyStore, error) {
+func Decode(r io.Reader, password string) (KeyStore, error) {
 	ksd := keyStoreDecoder{r: r}
 	readMagic, err := ksd.readUint32()
 	if err != nil {
@@ -232,5 +212,5 @@ func Decode(r io.Reader, password string) (*KeyStore, error) {
 		}
 		keyStore[alias] = entry
 	}
-	return &keyStore, nil
+	return keyStore, nil
 }
