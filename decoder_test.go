@@ -3,6 +3,7 @@ package keystore
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/binary"
 	"reflect"
 	"testing"
@@ -31,7 +32,10 @@ func TestReadUint16(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{
+			r:  bytes.NewReader(tt.input),
+			md: sha1.New(),
+		}
 		number, err := ksd.readUint16()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -65,7 +69,10 @@ func TestReadUint32(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{
+			r:  bytes.NewReader(tt.input),
+			md: sha1.New(),
+		}
 		number, err := ksd.readUint32()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -99,7 +106,10 @@ func TestReadUint64(t *testing.T) {
 	}()
 
 	for _, tt := range readUint64Table {
-		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{
+			r:  bytes.NewReader(tt.input),
+			md: sha1.New(),
+		}
 		number, err := ksd.readUint64()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -135,7 +145,10 @@ func TestReadBytes(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{
+			r:  bytes.NewReader(tt.input),
+			md: sha1.New(),
+		}
 		bts, err := ksd.readBytes(tt.readLen)
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)
@@ -166,7 +179,10 @@ func TestReadString(t *testing.T) {
 	}()
 
 	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{r: bytes.NewReader(tt.input)}
+		ksd := keyStoreDecoder{
+			r:  bytes.NewReader(tt.input),
+			md: sha1.New(),
+		}
 		str, err := ksd.readString()
 		if err != tt.err {
 			t.Errorf("Invalid error '%v' '%v'", tt.err, err)

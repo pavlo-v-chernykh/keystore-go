@@ -2,14 +2,17 @@ package keystore
 
 import (
 	"crypto/sha1"
-	"encoding/asn1"
 	"errors"
 	"hash"
 	"io"
 	"math"
 )
 
+// ErrEncodedSequenceTooLong indicates that size of string or bytes trying to encode too big
 var ErrEncodedSequenceTooLong = errors.New("Encoded sequence too long")
+
+// ErrIncorrectEntryType indicates incorrect entry type addressing
+var ErrIncorrectEntryType = errors.New("Incorrect entry type")
 
 type keyStoreEncoder struct {
 	w  io.Writer
@@ -140,12 +143,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	if err != nil {
 		return err
 	}
-	keyProtector := newKeyProtector(password)
-	keyInfo, err := keyProtector.protect(pke.PrivKey)
-	if err != nil {
-		return err
-	}
-	encodedPrivKeyContent, err := asn1.Marshal(*keyInfo)
+	encodedPrivKeyContent, err := protectKey(pke.PrivKey, password)
 	if err != nil {
 		return err
 	}
@@ -187,7 +185,7 @@ func Encode(w io.Writer, ks KeyStore, password string) error {
 	if err != nil {
 		return err
 	}
-	_, err = kse.md.Write([]byte("Mighty Aphrodite"))
+	_, err = kse.md.Write(whitenerMessage)
 	if err != nil {
 		return err
 	}

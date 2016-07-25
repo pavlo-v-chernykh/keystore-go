@@ -15,17 +15,17 @@ import (
 	"reflect"
 )
 
-func readKeyStore(filename, password string) (keystore.KeyStore, error) {
+func readKeyStore(filename, password string) keystore.KeyStore {
 	f, err := os.Open(filename)
 	defer f.Close()
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 	keyStore, err := keystore.Decode(f, password)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
-	return keyStore, nil
+	return keyStore
 }
 
 func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
@@ -41,19 +41,14 @@ func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
 }
 
 func main() {
-	ks1, err := readKeyStore("keystore1.jks", "password")
-	if err != nil {
-		log.Fatal(err)
-	}
+	ks1 := readKeyStore("keystore1.jks", "password")
 
 	writeKeyStore(ks1, "keystore2.jks", "password")
 
-	ks2, err := readKeyStore("keystore2.jks", "password")
+	ks2 := readKeyStore("keystore2.jks", "password")
 
-	privKeyEntry, err := ks1.GetPrivateKeyEntry("alias")
-	if err != nil {
-		log.Fatal(err)
-	}
+	entry := ks1["alias"]
+	privKeyEntry := entry.(*keystore.PrivateKeyEntry)
 	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivKey)
 	if err != nil {
 		log.Fatal(err)
@@ -61,10 +56,6 @@ func main() {
 	_, ok := key.(*rsa.PrivateKey)
 	if !ok {
 		log.Fatal("Should be a rsa private key")
-	}
-
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	log.Printf("Is equal: %v\n", reflect.DeepEqual(ks1, ks2))

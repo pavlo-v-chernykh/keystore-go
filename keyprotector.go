@@ -6,7 +6,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
-	"hash"
 )
 
 const saltLen = 20
@@ -24,29 +23,24 @@ type keyInfo struct {
 	PrivateKey []byte
 }
 
-type keyProtector struct {
-	md          hash.Hash
-	passwdBytes []byte
-}
-
-func newKeyProtector(password string) keyProtector {
-	return keyProtector{
-		md:          sha1.New(),
-		passwdBytes: passwordBytes(password),
+func recoverKey(encodedKey []byte, password string) ([]byte, error) {
+	var keyInfo keyInfo
+	asn1Rest, err := asn1.Unmarshal(encodedKey, &keyInfo)
+	if err != nil || len(asn1Rest) > 0 {
+		return nil, ErrIncorrectPrivateKey
 	}
-}
-
-func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 	if !keyInfo.Algo.Algorithm.Equal(supportedPrivateKeyAlgorithmOid) {
 		return nil, ErrUnsupportedPrivateKeyAlgorithm
 	}
 
+	md := sha1.New()
+	passwdBytes := passwordBytes(password)
 	salt := make([]byte, saltLen)
 	copy(salt, keyInfo.PrivateKey)
-	encrKeyLen := len(keyInfo.PrivateKey) - saltLen - kp.md.Size()
-	numRounds := encrKeyLen / kp.md.Size()
+	encrKeyLen := len(keyInfo.PrivateKey) - saltLen - md.Size()
+	numRounds := encrKeyLen / md.Size()
 
-	if encrKeyLen%kp.md.Size() != 0 {
+	if encrKeyLen%md.Size() != 0 {
 		numRounds++
 	}
 
@@ -57,18 +51,18 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		_, err := kp.md.Write(kp.passwdBytes)
+		_, err := md.Write(passwdBytes)
 		if err != nil {
 			return nil, ErrUnrecoverablePrivateKey
 		}
-		_, err = kp.md.Write(digest)
+		_, err = md.Write(digest)
 		if err != nil {
 			return nil, ErrUnrecoverablePrivateKey
 		}
-		digest = kp.md.Sum(nil)
-		kp.md.Reset()
+		digest = md.Sum(nil)
+		md.Reset()
 		copy(xorKey[xorOffset:], digest)
-		xorOffset += kp.md.Size()
+		xorOffset += md.Size()
 	}
 
 	plainKey := make([]byte, encrKeyLen)
@@ -76,16 +70,16 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 		plainKey[i] = encrKey[i] ^ xorKey[i]
 	}
 
-	_, err := kp.md.Write(kp.passwdBytes)
+	_, err = md.Write(passwdBytes)
 	if err != nil {
 		return nil, ErrUnrecoverablePrivateKey
 	}
-	_, err = kp.md.Write(plainKey)
+	_, err = md.Write(plainKey)
 	if err != nil {
 		return nil, ErrUnrecoverablePrivateKey
 	}
-	digest = kp.md.Sum(nil)
-	kp.md.Reset()
+	digest = md.Sum(nil)
+	md.Reset()
 
 	digestOffset := saltLen + encrKeyLen
 	for i := 0; i < len(digest); i++ {
@@ -97,11 +91,14 @@ func (kp *keyProtector) recover(keyInfo keyInfo) ([]byte, error) {
 	return plainKey, nil
 }
 
-func (kp *keyProtector) protect(plainKey []byte) (*keyInfo, error) {
-	plainKeyLen := len(plainKey)
-	numRounds := plainKeyLen / kp.md.Size()
+func protectKey(plainKey []byte, password string) ([]byte, error) {
+	md := sha1.New()
+	passwdBytes := passwordBytes(password)
 
-	if plainKeyLen%kp.md.Size() != 0 {
+	plainKeyLen := len(plainKey)
+	numRounds := plainKeyLen / md.Size()
+
+	if plainKeyLen%md.Size() != 0 {
 		numRounds++
 	}
 
@@ -115,18 +112,18 @@ func (kp *keyProtector) protect(plainKey []byte) (*keyInfo, error) {
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		_, err = kp.md.Write(kp.passwdBytes)
+		_, err = md.Write(passwdBytes)
 		if err != nil {
 			return nil, err
 		}
-		_, err = kp.md.Write(digest)
+		_, err = md.Write(digest)
 		if err != nil {
 			return nil, err
 		}
-		digest = kp.md.Sum(nil)
-		kp.md.Reset()
+		digest = md.Sum(nil)
+		md.Reset()
 		copy(xorKey[xorOffset:], digest)
-		xorOffset += kp.md.Size()
+		xorOffset += md.Size()
 	}
 
 	tmpKey := make([]byte, plainKeyLen)
@@ -134,23 +131,23 @@ func (kp *keyProtector) protect(plainKey []byte) (*keyInfo, error) {
 		tmpKey[i] = plainKey[i] ^ xorKey[i]
 	}
 
-	encrKey := make([]byte, saltLen+plainKeyLen+kp.md.Size())
+	encrKey := make([]byte, saltLen+plainKeyLen+md.Size())
 	encrKeyOffset := 0
 	copy(encrKey[encrKeyOffset:], salt)
 	encrKeyOffset += saltLen
 	copy(encrKey[encrKeyOffset:], tmpKey)
 	encrKeyOffset += plainKeyLen
 
-	_, err = kp.md.Write(kp.passwdBytes)
+	_, err = md.Write(passwdBytes)
 	if err != nil {
 		return nil, err
 	}
-	_, err = kp.md.Write(plainKey)
+	_, err = md.Write(plainKey)
 	if err != nil {
 		return nil, err
 	}
-	digest = kp.md.Sum(nil)
-	kp.md.Reset()
+	digest = md.Sum(nil)
+	md.Reset()
 	copy(encrKey[encrKeyOffset:], digest)
 	keyInfo := keyInfo{
 		Algo: pkix.AlgorithmIdentifier{
@@ -158,5 +155,9 @@ func (kp *keyProtector) protect(plainKey []byte) (*keyInfo, error) {
 		},
 		PrivateKey: encrKey,
 	}
-	return &keyInfo, nil
+	encodedKey, err := asn1.Marshal(keyInfo)
+	if err != nil {
+		return nil, err
+	}
+	return encodedKey, nil
 }
