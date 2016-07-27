@@ -1,9 +1,5 @@
-# Keystore
-A go (golang) implementation of Java [KeyStore][1] encoder/decoder
+// +build ignore
 
-### Example
-
-```go
 package main
 
 import (
@@ -47,8 +43,3 @@ func main() {
 
 	log.Printf("Is equal: %v\n", reflect.DeepEqual(ks1, ks2))
 }
-```
-
-For more examples explore [examples](examples) dir
-
-[1]: https://docs.oracle.com/javase/7/docs/technotes/guides/security/crypto/CryptoSpec.html#KeyManagement
