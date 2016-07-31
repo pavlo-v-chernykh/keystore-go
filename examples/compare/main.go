@@ -9,7 +9,7 @@ import (
 	"reflect"
 )
 
-func readKeyStore(filename, password string) keystore.KeyStore {
+func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
 	defer f.Close()
 	if err != nil {
@@ -22,7 +22,7 @@ func readKeyStore(filename, password string) keystore.KeyStore {
 	return keyStore
 }
 
-func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
+func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
 	o, err := os.Create(filename)
 	defer o.Close()
 	if err != nil {
@@ -34,12 +34,20 @@ func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
 	}
 }
 
+func zeroing(s []byte) {
+	for i := 0; i < len(s); i++ {
+		s[i] = 0
+	}
+}
+
 func main() {
-	ks1 := readKeyStore("keystore.jks", "password")
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+	ks1 := readKeyStore("keystore.jks", password)
 
-	writeKeyStore(ks1, "keystore2.jks", "password")
+	writeKeyStore(ks1, "keystore2.jks", password)
 
-	ks2 := readKeyStore("keystore2.jks", "password")
+	ks2 := readKeyStore("keystore2.jks", password)
 
 	log.Printf("Is equal: %v\n", reflect.DeepEqual(ks1, ks2))
 }

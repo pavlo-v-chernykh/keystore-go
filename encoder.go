@@ -130,7 +130,7 @@ func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *Trus
 	return nil
 }
 
-func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEntry, password string) error {
+func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEntry, password []byte) error {
 	err := kse.writeUint32(privateKeyTag)
 	if err != nil {
 		return err
@@ -176,12 +176,14 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	return nil
 }
 
-func Encode(w io.Writer, ks KeyStore, password string) error {
+func Encode(w io.Writer, ks KeyStore, password []byte) error {
 	kse := keyStoreEncoder{
 		w:  w,
 		md: sha1.New(),
 	}
-	_, err := kse.md.Write(passwordBytes(password))
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
+	_, err := kse.md.Write(passwordBytes)
 	if err != nil {
 		return err
 	}

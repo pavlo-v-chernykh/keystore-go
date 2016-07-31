@@ -131,7 +131,7 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 	return &Certificate{certType, certContent}, nil
 }
 
-func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password string) (*PrivateKeyEntry, error) {
+func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte) (*PrivateKeyEntry, error) {
 	creationDateTimeStamp, err := ksd.readUint64()
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*Truste
 	return &TrustedCertificateEntry{Entry{creationDateTime}, *cert}, nil
 }
 
-func (ksd *keyStoreDecoder) readEntry(version uint32, password string) (string, interface{}, error) {
+func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, interface{}, error) {
 	tag, err := ksd.readUint32()
 	if err != nil {
 		return "", nil, err
@@ -204,12 +204,14 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password string) (string, 
 }
 
 // Decode reads and decrypts keystore entries using password
-func Decode(r io.Reader, password string) (KeyStore, error) {
+func Decode(r io.Reader, password []byte) (KeyStore, error) {
 	ksd := keyStoreDecoder{
 		r:  r,
 		md: sha1.New(),
 	}
-	_, err := ksd.md.Write(passwordBytes(password))
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
+	_, err := ksd.md.Write(passwordBytes)
 	if err != nil {
 		return nil, err
 	}

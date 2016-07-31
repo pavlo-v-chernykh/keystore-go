@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func readKeyStore(filename, password string) keystore.KeyStore {
+func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
 	defer f.Close()
 	if err != nil {
@@ -25,7 +25,7 @@ func readKeyStore(filename, password string) keystore.KeyStore {
 	return keyStore
 }
 
-func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
+func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
 	o, err := os.Create(filename)
 	defer o.Close()
 	if err != nil {
@@ -34,6 +34,12 @@ func writeKeyStore(keyStore keystore.KeyStore, filename, password string) {
 	err = keystore.Encode(o, keyStore, password)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func zeroing(s []byte) {
+	for i := 0; i < len(s); i++ {
+		s[i] = 0
 	}
 }
 
@@ -60,9 +66,11 @@ func main() {
 		},
 	}
 
-	writeKeyStore(keyStore, "keystore.jks", "password")
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+	writeKeyStore(keyStore, "keystore.jks", password)
 
-	ks := readKeyStore("keystore.jks", "password")
+	ks := readKeyStore("keystore.jks", password)
 
 	entry := ks["alias"]
 	privKeyEntry := entry.(*keystore.PrivateKeyEntry)

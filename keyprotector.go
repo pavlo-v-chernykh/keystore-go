@@ -23,7 +23,7 @@ type keyInfo struct {
 	PrivateKey []byte
 }
 
-func recoverKey(encodedKey []byte, password string) ([]byte, error) {
+func recoverKey(encodedKey []byte, password []byte) ([]byte, error) {
 	var keyInfo keyInfo
 	asn1Rest, err := asn1.Unmarshal(encodedKey, &keyInfo)
 	if err != nil || len(asn1Rest) > 0 {
@@ -34,7 +34,8 @@ func recoverKey(encodedKey []byte, password string) ([]byte, error) {
 	}
 
 	md := sha1.New()
-	passwdBytes := passwordBytes(password)
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
 	salt := make([]byte, saltLen)
 	copy(salt, keyInfo.PrivateKey)
 	encrKeyLen := len(keyInfo.PrivateKey) - saltLen - md.Size()
@@ -51,7 +52,7 @@ func recoverKey(encodedKey []byte, password string) ([]byte, error) {
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		_, err := md.Write(passwdBytes)
+		_, err := md.Write(passwordBytes)
 		if err != nil {
 			return nil, ErrUnrecoverablePrivateKey
 		}
@@ -70,7 +71,7 @@ func recoverKey(encodedKey []byte, password string) ([]byte, error) {
 		plainKey[i] = encrKey[i] ^ xorKey[i]
 	}
 
-	_, err = md.Write(passwdBytes)
+	_, err = md.Write(passwordBytes)
 	if err != nil {
 		return nil, ErrUnrecoverablePrivateKey
 	}
@@ -91,10 +92,10 @@ func recoverKey(encodedKey []byte, password string) ([]byte, error) {
 	return plainKey, nil
 }
 
-func protectKey(plainKey []byte, password string) ([]byte, error) {
+func protectKey(plainKey []byte, password []byte) ([]byte, error) {
 	md := sha1.New()
 	passwdBytes := passwordBytes(password)
-
+	defer zeroing(passwdBytes)
 	plainKeyLen := len(plainKey)
 	numRounds := plainKeyLen / md.Size()
 
