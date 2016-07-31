@@ -13,10 +13,10 @@ const saltLen = 20
 var supportedPrivateKeyAlgorithmOid = asn1.ObjectIdentifier([]int{1, 3, 6, 1, 4, 1, 42, 2, 17, 1, 1})
 
 // ErrUnsupportedPrivateKeyAlgorithm indicates unsupported private key algorithm
-var ErrUnsupportedPrivateKeyAlgorithm = errors.New("Unsupported private key algorithm")
+var ErrUnsupportedPrivateKeyAlgorithm = errors.New("keystore: unsupported private key algorithm")
 
 // ErrUnrecoverablePrivateKey indicates unrecoverable private key content (often means wrong password usage)
-var ErrUnrecoverablePrivateKey = errors.New("Unrecoverable private key")
+var ErrUnrecoverablePrivateKey = errors.New("keystore: unrecoverable private key")
 
 type keyInfo struct {
 	Algo       pkix.AlgorithmIdentifier

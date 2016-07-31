@@ -9,10 +9,10 @@ import (
 )
 
 // ErrEncodedSequenceTooLong indicates that size of string or bytes trying to encode too big
-var ErrEncodedSequenceTooLong = errors.New("Encoded sequence too long")
+var ErrEncodedSequenceTooLong = errors.New("keystore: encoded sequence too long")
 
 // ErrIncorrectEntryType indicates incorrect entry type addressing
-var ErrIncorrectEntryType = errors.New("Incorrect entry type")
+var ErrIncorrectEntryType = errors.New("keystore: incorrect entry type")
 
 type keyStoreEncoder struct {
 	w  io.Writer

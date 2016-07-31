@@ -11,22 +11,22 @@ import (
 const defaultCertificateType = "X509"
 
 // ErrIo indicates i/o error
-var ErrIo = errors.New("Invalid keystore format")
+var ErrIo = errors.New("keystore: invalid keystore format")
 
 // ErrIncorrectMagic indicates incorrect file magic
-var ErrIncorrectMagic = errors.New("Invalid keystore format")
+var ErrIncorrectMagic = errors.New("keystore: invalid keystore format")
 
 // ErrIncorrectVersion indicates incorrect keystore version format
-var ErrIncorrectVersion = errors.New("Invalid keystore format")
+var ErrIncorrectVersion = errors.New("keystore: invalid keystore format")
 
 // ErrIncorrectTag indicates incorrect keystore entry tag
-var ErrIncorrectTag = errors.New("Invalid keystore format")
+var ErrIncorrectTag = errors.New("keystore: invalid keystore format")
 
 // ErrIncorrectPrivateKey indicates incorrect private key entry content
-var ErrIncorrectPrivateKey = errors.New("Invalid private key format")
+var ErrIncorrectPrivateKey = errors.New("keystore: invalid private key format")
 
 // ErrTemperedKeyStore indicates that keystore was tampered or password was incorrect
-var ErrInvalidDigest = errors.New("Invalid digest")
+var ErrInvalidDigest = errors.New("keystore: invalid digest")
 
 type keyStoreDecoder struct {
 	r  io.Reader
