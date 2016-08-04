@@ -25,7 +25,7 @@ var ErrIncorrectTag = errors.New("keystore: invalid keystore format")
 // ErrIncorrectPrivateKey indicates incorrect private key entry content
 var ErrIncorrectPrivateKey = errors.New("keystore: invalid private key format")
 
-// ErrTemperedKeyStore indicates that keystore was tampered or password was incorrect
+// ErrInvalidDigest indicates that keystore was tampered or password was incorrect
 var ErrInvalidDigest = errors.New("keystore: invalid digest")
 
 type keyStoreDecoder struct {
@@ -128,7 +128,11 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 	if err != nil {
 		return nil, err
 	}
-	return &Certificate{certType, certContent}, nil
+	certificate := Certificate{
+		Type:    certType,
+		Content: certContent,
+	}
+	return &certificate, nil
 }
 
 func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte) (*PrivateKeyEntry, error) {
@@ -161,7 +165,14 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte)
 		return nil, err
 	}
 	creationDateTime := time.Unix(int64(creationDateTimeStamp), 0)
-	return &PrivateKeyEntry{Entry{creationDateTime}, plainPrivateKeyContent, chain}, nil
+	privateKeyEntry := PrivateKeyEntry{
+		Entry: Entry{
+			CreationDate: creationDateTime,
+		},
+		PrivKey:   plainPrivateKeyContent,
+		CertChain: chain,
+	}
+	return &privateKeyEntry, nil
 }
 
 func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*TrustedCertificateEntry, error) {
@@ -174,7 +185,13 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*Truste
 		return nil, err
 	}
 	creationDateTime := time.Unix(int64(creationDateTimeStamp), 0)
-	return &TrustedCertificateEntry{Entry{creationDateTime}, *cert}, nil
+	trustedCertificateEntry := TrustedCertificateEntry{
+		Entry: Entry{
+			CreationDate: creationDateTime,
+		},
+		Certificate: *cert,
+	}
+	return &trustedCertificateEntry, nil
 }
 
 func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, interface{}, error) {
@@ -203,7 +220,8 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, 
 	return "", nil, ErrIncorrectTag
 }
 
-// Decode reads and decrypts keystore entries using password
+// Decode reads keystore representation from r then decrypts and check signature using password
+// It is strongly recommended to fill password slice with zero after usage
 func Decode(r io.Reader, password []byte) (KeyStore, error) {
 	ksd := keyStoreDecoder{
 		r:  r,
