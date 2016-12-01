@@ -44,7 +44,7 @@ func zeroing(s []byte) {
 }
 
 func main() {
-	// openssl genrsa -out privkey.pem 1024
+	// openssl genrsa 1024 | openssl pkcs8 -topk8 -inform pem -outform pem -nocrypt -out privkey.pem
 	pke, err := ioutil.ReadFile("./privkey.pem")
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +53,7 @@ func main() {
 	if p == nil {
 		log.Fatal("Should have at least one pem block")
 	}
-	if p.Type != "RSA PRIVATE KEY" {
+	if p.Type != "PRIVATE KEY" {
 		log.Fatal("Should be a rsa private key")
 	}
 
@@ -74,7 +74,7 @@ func main() {
 
 	entry := ks["alias"]
 	privKeyEntry := entry.(*keystore.PrivateKeyEntry)
-	key, err := x509.ParsePKCS1PrivateKey(privKeyEntry.PrivKey)
+	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivKey)
 	if err != nil {
 		log.Fatal(err)
 	}

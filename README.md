@@ -1,6 +1,8 @@
 # Keystore
 A go (golang) implementation of Java [KeyStore][1] encoder/decoder
 
+Take into account that JKS assumes that private keys are PKCS8 encoded.
+
 ### Example
 
 ```go
