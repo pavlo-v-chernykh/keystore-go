@@ -5,7 +5,6 @@ import (
 	"errors"
 	"hash"
 	"io"
-	"time"
 )
 
 const defaultCertificateType = "X509"
@@ -164,7 +163,7 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte)
 	if err != nil {
 		return nil, err
 	}
-	creationDateTime := time.Unix(int64(creationDateTimeStamp), 0)
+	creationDateTime := millisecondsToTime(int64(creationDateTimeStamp))
 	privateKeyEntry := PrivateKeyEntry{
 		Entry: Entry{
 			CreationDate: creationDateTime,
@@ -184,7 +183,7 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*Truste
 	if err != nil {
 		return nil, err
 	}
-	creationDateTime := time.Unix(int64(creationDateTimeStamp), 0)
+	creationDateTime := millisecondsToTime(int64(creationDateTimeStamp))
 	trustedCertificateEntry := TrustedCertificateEntry{
 		Entry: Entry{
 			CreationDate: creationDateTime,

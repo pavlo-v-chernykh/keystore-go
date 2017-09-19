@@ -1,6 +1,9 @@
 package keystore
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"time"
+)
 
 const magic uint32 = 0xfeedfeed
 const (
@@ -29,4 +32,12 @@ func zeroing(s []byte) {
 	for i := 0; i < len(s); i++ {
 		s[i] = 0
 	}
+}
+
+func millisecondsToTime(ms int64) time.Time {
+	return time.Unix(0, ms*int64(time.Millisecond))
+}
+
+func timeToMilliseconds(t time.Time) int64 {
+	return t.UnixNano() / int64(time.Millisecond)
 }

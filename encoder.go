@@ -119,7 +119,7 @@ func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *Trus
 	if err != nil {
 		return err
 	}
-	err = kse.writeUint64(uint64(tce.CreationDate.Unix()))
+	err = kse.writeUint64(uint64(timeToMilliseconds(tce.CreationDate)))
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	if err != nil {
 		return err
 	}
-	err = kse.writeUint64(uint64(pke.CreationDate.Unix()))
+	err = kse.writeUint64(uint64(timeToMilliseconds(pke.CreationDate)))
 	if err != nil {
 		return err
 	}
