@@ -153,6 +153,7 @@ func protectKey(plainKey []byte, password []byte) ([]byte, error) {
 	keyInfo := keyInfo{
 		Algo: pkix.AlgorithmIdentifier{
 			Algorithm: supportedPrivateKeyAlgorithmOid,
+			Parameters: asn1.RawValue{Tag: 5},
 		},
 		PrivateKey: encrKey,
 	}
