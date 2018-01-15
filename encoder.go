@@ -176,7 +176,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	return nil
 }
 
-// Encode encrypts and sign keystore using password and write its representation into w
+// Encode encrypts and signs keystore using password and writes its representation into w
 // It is strongly recommended to fill password slice with zero after usage
 func Encode(w io.Writer, ks KeyStore, password []byte) error {
 	kse := keyStoreEncoder{
