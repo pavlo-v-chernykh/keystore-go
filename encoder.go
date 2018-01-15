@@ -1,6 +1,7 @@
 package keystore
 
 import (
+	"crypto/rand"
 	"crypto/sha1"
 	"errors"
 	"hash"
@@ -15,9 +16,10 @@ var ErrEncodedSequenceTooLong = errors.New("keystore: encoded sequence too long"
 var ErrIncorrectEntryType = errors.New("keystore: incorrect entry type")
 
 type keyStoreEncoder struct {
-	w  io.Writer
-	b  [bufSize]byte
-	md hash.Hash
+	w    io.Writer
+	b    [bufSize]byte
+	md   hash.Hash
+	rand io.Reader
 }
 
 func (kse *keyStoreEncoder) writeUint16(value uint16) error {
@@ -143,7 +145,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	if err != nil {
 		return err
 	}
-	encodedPrivKeyContent, err := protectKey(pke.PrivKey, password)
+	encodedPrivKeyContent, err := protectKey(kse.rand, pke.PrivKey, password)
 	if err != nil {
 		return err
 	}
@@ -179,9 +181,17 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 // Encode encrypts and signs keystore using password and writes its representation into w
 // It is strongly recommended to fill password slice with zero after usage
 func Encode(w io.Writer, ks KeyStore, password []byte) error {
+	return EncodeWithRand(rand.Reader, w, ks, password)
+}
+
+// Encode encrypts and signs keystore using password and writes its representation into w
+// Random bytes are read from rand, which must be a cryptographically secure source of randomness
+// It is strongly recommended to fill password slice with zero after usage
+func EncodeWithRand(rand io.Reader, w io.Writer, ks KeyStore, password []byte) error {
 	kse := keyStoreEncoder{
-		w:  w,
-		md: sha1.New(),
+		w:    w,
+		md:   sha1.New(),
+		rand: rand,
 	}
 	passwordBytes := passwordBytes(password)
 	defer zeroing(passwordBytes)

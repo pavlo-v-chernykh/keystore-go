@@ -1,11 +1,11 @@
 package keystore
 
 import (
-	"crypto/rand"
 	"crypto/sha1"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
+	"io"
 )
 
 const saltLen = 20
@@ -92,7 +92,7 @@ func recoverKey(encodedKey []byte, password []byte) ([]byte, error) {
 	return plainKey, nil
 }
 
-func protectKey(plainKey []byte, password []byte) ([]byte, error) {
+func protectKey(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	md := sha1.New()
 	passwdBytes := passwordBytes(password)
 	defer zeroing(passwdBytes)
