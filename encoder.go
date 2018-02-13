@@ -97,7 +97,7 @@ func (kse *keyStoreEncoder) writeCertificate(cert *Certificate) error {
 	if err != nil {
 		return err
 	}
-	certLen := len(cert.Content)
+	certLen := uint64(len(cert.Content))
 	if certLen > math.MaxUint32 {
 		return ErrEncodedSequenceTooLong
 	}
@@ -149,7 +149,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	if err != nil {
 		return err
 	}
-	privKeyLen := len(encodedPrivKeyContent)
+	privKeyLen := uint64(len(encodedPrivKeyContent))
 	if privKeyLen > math.MaxUint32 {
 		return ErrEncodedSequenceTooLong
 	}
@@ -161,7 +161,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	if err != nil {
 		return err
 	}
-	certCount := len(pke.CertChain)
+	certCount := uint64(len(pke.CertChain))
 	if certCount > math.MaxUint32 {
 		return ErrEncodedSequenceTooLong
 	}
