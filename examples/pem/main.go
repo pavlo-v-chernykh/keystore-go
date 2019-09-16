@@ -1,23 +1,26 @@
-// +build ignore
-
 package main
 
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/pavel-v-chernykh/keystore-go"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+
+	"github.com/pavel-v-chernykh/keystore-go"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	keyStore, err := keystore.Decode(f, password)
 	if err != nil {
 		log.Fatal(err)
@@ -26,12 +29,16 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 }
 
 func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
-	o, err := os.Create(filename)
-	defer o.Close()
+	f, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = keystore.Encode(o, keyStore, password)
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	err = keystore.Encode(f, keyStore, password)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,9 +67,9 @@ func main() {
 	keyStore := keystore.KeyStore{
 		"alias": &keystore.PrivateKeyEntry{
 			Entry: keystore.Entry{
-				CreationDate: time.Now(),
+				CreationTime: time.Now(),
 			},
-			PrivKey: p.Bytes,
+			PrivateKey: p.Bytes,
 		},
 	}
 
@@ -74,7 +81,7 @@ func main() {
 
 	entry := ks["alias"]
 	privKeyEntry := entry.(*keystore.PrivateKeyEntry)
-	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivKey)
+	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}

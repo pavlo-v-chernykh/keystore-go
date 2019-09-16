@@ -15,7 +15,9 @@ func TestZeroing(t *testing.T) {
 	var table zeroingTable
 	for i := 0; i < 20; i++ {
 		buf := make([]byte, 4096)
-		rand.Read(buf)
+		if _, err := rand.Read(buf); err != nil {
+			t.Errorf("failed to read random bytes: %v", err)
+		}
 		table = append(table, zeroingItem{input: buf})
 	}
 
@@ -23,7 +25,7 @@ func TestZeroing(t *testing.T) {
 		zeroing(tt.input)
 		for i := range tt.input {
 			if tt.input[i] != 0 {
-				t.Errorf("Invalid zeroing '%v'", tt.input)
+				t.Errorf("failed to fill input with zeros '%v'", tt.input)
 			}
 		}
 	}
@@ -36,19 +38,21 @@ func TestPasswordBytes(t *testing.T) {
 	}
 	var table []passwordBytesItem
 	for i := 0; i < 20; i++ {
-		ibuf := make([]byte, 1024)
-		rand.Read(ibuf)
-		obuf := make([]byte, len(ibuf)*2)
-		for j, k := 0, 0; j < len(obuf); j, k = j+2, k+1 {
-			obuf[j] = 0
-			obuf[j+1] = ibuf[k]
+		input := make([]byte, 1024)
+		if _, err := rand.Read(input); err != nil {
+			t.Errorf("failed to read random bytes: %v", err)
 		}
-		table = append(table, passwordBytesItem{input: ibuf, output: obuf})
+		output := make([]byte, len(input)*2)
+		for j, k := 0, 0; j < len(output); j, k = j+2, k+1 {
+			output[j] = 0
+			output[j+1] = input[k]
+		}
+		table = append(table, passwordBytesItem{input: input, output: output})
 	}
 	for _, tt := range table {
 		output := passwordBytes(tt.input)
 		if !reflect.DeepEqual(output, tt.output) {
-			t.Errorf("Invalid output '%v', '%v'", output, tt.output)
+			t.Errorf("failed to convert password bytes '%v', '%v'", output, tt.output)
 		}
 	}
 }

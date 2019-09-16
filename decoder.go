@@ -1,31 +1,15 @@
 package keystore
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 )
 
 const defaultCertificateType = "X509"
-
-// ErrIo indicates i/o error
-var ErrIo = errors.New("keystore: invalid keystore format")
-
-// ErrIncorrectMagic indicates incorrect file magic
-var ErrIncorrectMagic = errors.New("keystore: invalid keystore format")
-
-// ErrIncorrectVersion indicates incorrect keystore version format
-var ErrIncorrectVersion = errors.New("keystore: invalid keystore format")
-
-// ErrIncorrectTag indicates incorrect keystore entry tag
-var ErrIncorrectTag = errors.New("keystore: invalid keystore format")
-
-// ErrIncorrectPrivateKey indicates incorrect private key entry content
-var ErrIncorrectPrivateKey = errors.New("keystore: invalid private key format")
-
-// ErrInvalidDigest indicates that keystore was tampered or password was incorrect
-var ErrInvalidDigest = errors.New("keystore: invalid digest")
 
 type keyStoreDecoder struct {
 	r  io.Reader
@@ -35,41 +19,35 @@ type keyStoreDecoder struct {
 
 func (ksd *keyStoreDecoder) readUint16() (uint16, error) {
 	const blockSize = 2
-	_, err := io.ReadFull(ksd.r, ksd.b[:blockSize])
-	if err != nil {
-		return 0, ErrIo
+	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to read uint16: %w", err)
 	}
-	_, err = ksd.md.Write(ksd.b[:blockSize])
-	if err != nil {
-		return 0, err
+	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to update digest: %w", err)
 	}
-	return order.Uint16(ksd.b[:blockSize]), nil
+	return byteOrder.Uint16(ksd.b[:blockSize]), nil
 }
 
 func (ksd *keyStoreDecoder) readUint32() (uint32, error) {
 	const blockSize = 4
-	_, err := io.ReadFull(ksd.r, ksd.b[:blockSize])
-	if err != nil {
-		return 0, ErrIo
+	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to read uint32: %w", err)
 	}
-	_, err = ksd.md.Write(ksd.b[:blockSize])
-	if err != nil {
-		return 0, err
+	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to update digest: %w", err)
 	}
-	return order.Uint32(ksd.b[:blockSize]), nil
+	return byteOrder.Uint32(ksd.b[:blockSize]), nil
 }
 
 func (ksd *keyStoreDecoder) readUint64() (uint64, error) {
 	const blockSize = 8
-	_, err := io.ReadFull(ksd.r, ksd.b[:blockSize])
-	if err != nil {
-		return 0, ErrIo
+	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to read uint64: %w", err)
 	}
-	_, err = ksd.md.Write(ksd.b[:blockSize])
-	if err != nil {
-		return 0, err
+	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
+		return 0, fmt.Errorf("failed to update digest: %w", err)
 	}
-	return order.Uint64(ksd.b[:blockSize]), nil
+	return byteOrder.Uint64(ksd.b[:blockSize]), nil
 }
 
 func (ksd *keyStoreDecoder) readBytes(num uint32) ([]byte, error) {
@@ -79,16 +57,14 @@ func (ksd *keyStoreDecoder) readBytes(num uint32) ([]byte, error) {
 		if blockSize > bufSize {
 			blockSize = bufSize
 		}
-		_, err := io.ReadFull(ksd.r, ksd.b[:blockSize])
-		if err != nil {
-			return result, ErrIo
+		if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
+			return result, fmt.Errorf("failed to read %d bytes: %w", num, err)
 		}
 		result = append(result, ksd.b[:blockSize]...)
 		lenToRead -= blockSize
 	}
-	_, err := ksd.md.Write(result)
-	if err != nil {
-		return nil, err
+	if _, err := ksd.md.Write(result); err != nil {
+		return nil, fmt.Errorf("failed to update digest: %w", err)
 	}
 	return result, nil
 }
@@ -96,13 +72,13 @@ func (ksd *keyStoreDecoder) readBytes(num uint32) ([]byte, error) {
 func (ksd *keyStoreDecoder) readString() (string, error) {
 	strLen, err := ksd.readUint16()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read length: %w", err)
 	}
-	bytes, err := ksd.readBytes(uint32(strLen))
+	strBody, err := ksd.readBytes(uint32(strLen))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read body: %w", err)
 	}
-	return string(bytes), nil
+	return string(strBody), nil
 }
 
 func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error) {
@@ -113,19 +89,19 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 	case version02:
 		readCertType, err := ksd.readString()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read type: %w", err)
 		}
 		certType = readCertType
 	default:
-		return nil, ErrIncorrectVersion
+		return nil, errors.New("got unknown version")
 	}
 	certLen, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read length: %w", err)
 	}
 	certContent, err := ksd.readBytes(certLen)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read content: %w", err)
 	}
 	certificate := Certificate{
 		Type:    certType,
@@ -135,60 +111,60 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 }
 
 func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte) (*PrivateKeyEntry, error) {
-	creationDateTimeStamp, err := ksd.readUint64()
+	creationTimeStamp, err := ksd.readUint64()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read creation timestamp: %w", err)
 	}
-	privKeyLen, err := ksd.readUint32()
+	length, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read length")
 	}
-	encodedPrivateKeyContent, err := ksd.readBytes(privKeyLen)
+	encryptedPrivateKey, err := ksd.readBytes(length)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read encrypted private key: %w", err)
 	}
-	certCount, err := ksd.readUint32()
+	certNum, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read number of certificates: %w", err)
 	}
-	var chain []Certificate
-	for i := certCount; i > 0; i-- {
+	chain := make([]Certificate, 0, certNum)
+	for i := uint32(0); i < certNum; i++ {
 		cert, err := ksd.readCertificate(version)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read %d certificate: %w", i, err)
 		}
 		chain = append(chain, *cert)
 	}
-	plainPrivateKeyContent, err := recoverKey(encodedPrivateKeyContent, password)
+	decryptedPrivateKey, err := decrypt(encryptedPrivateKey, password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt content: %w", err)
 	}
-	creationDateTime := millisecondsToTime(int64(creationDateTimeStamp))
+	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
 	privateKeyEntry := PrivateKeyEntry{
 		Entry: Entry{
-			CreationDate: creationDateTime,
+			CreationTime: creationDateTime,
 		},
-		PrivKey:   plainPrivateKeyContent,
-		CertChain: chain,
+		PrivateKey:       decryptedPrivateKey,
+		CertificateChain: chain,
 	}
 	return &privateKeyEntry, nil
 }
 
 func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*TrustedCertificateEntry, error) {
-	creationDateTimeStamp, err := ksd.readUint64()
+	creationTimeStamp, err := ksd.readUint64()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read creation timestamp: %w", err)
 	}
-	cert, err := ksd.readCertificate(version)
+	certificate, err := ksd.readCertificate(version)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
 	}
-	creationDateTime := millisecondsToTime(int64(creationDateTimeStamp))
+	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
 	trustedCertificateEntry := TrustedCertificateEntry{
 		Entry: Entry{
-			CreationDate: creationDateTime,
+			CreationTime: creationDateTime,
 		},
-		Certificate: *cert,
+		Certificate: *certificate,
 	}
 	return &trustedCertificateEntry, nil
 }
@@ -196,27 +172,28 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*Truste
 func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, interface{}, error) {
 	tag, err := ksd.readUint32()
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to read tag: %w", err)
 	}
 	alias, err := ksd.readString()
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to read alias: %w", err)
 	}
 	switch tag {
 	case privateKeyTag:
 		entry, err := ksd.readPrivateKeyEntry(version, password)
 		if err != nil {
-			return "", nil, err
+			return "", nil, fmt.Errorf("failed to read private key entry: %w", err)
 		}
 		return alias, entry, nil
 	case trustedCertificateTag:
 		entry, err := ksd.readTrustedCertificateEntry(version)
 		if err != nil {
-			return "", nil, err
+			return "", nil, fmt.Errorf("failed to read trusted certificate entry: %w", err)
 		}
 		return alias, entry, nil
+	default:
+		return "", nil, errors.New("got unknown entry tag")
 	}
-	return "", nil, ErrIncorrectTag
 }
 
 // Decode reads keystore representation from r then decrypts and check signature using password
@@ -228,46 +205,43 @@ func Decode(r io.Reader, password []byte) (KeyStore, error) {
 	}
 	passwordBytes := passwordBytes(password)
 	defer zeroing(passwordBytes)
-	_, err := ksd.md.Write(passwordBytes)
-	if err != nil {
-		return nil, err
+	if _, err := ksd.md.Write(passwordBytes); err != nil {
+		return nil, fmt.Errorf("failed to update digest with password: %w", err)
 	}
-	_, err = ksd.md.Write(whitenerMessage)
-	if err != nil {
-		return nil, err
+	if _, err := ksd.md.Write(whitenerMessage); err != nil {
+		return nil, fmt.Errorf("failed to update digest with whitener message: %w", err)
 	}
-
 	readMagic, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read magic: %w", err)
 	}
 	if readMagic != magic {
-		return nil, ErrIncorrectMagic
+		return nil, errors.New("got invalid magic")
 	}
 	version, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read version")
 	}
-	count, err := ksd.readUint32()
+	entryNum, err := ksd.readUint32()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read number of entries: %w", err)
 	}
-	keyStore := KeyStore{}
-	for entitiesCount := count; entitiesCount > 0; entitiesCount-- {
+	keyStore := make(KeyStore, entryNum)
+	for i := uint32(0); i < entryNum; i++ {
 		alias, entry, err := ksd.readEntry(version, password)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read %d entry: %w", i, err)
 		}
 		keyStore[alias] = entry
 	}
 
 	computedDigest := ksd.md.Sum(nil)
 	actualDigest, err := ksd.readBytes(uint32(ksd.md.Size()))
-	for i := 0; i < len(actualDigest); i++ {
-		if actualDigest[i] != computedDigest[i] {
-			return nil, ErrInvalidDigest
-		}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read digest: %w", err)
 	}
-
+	if bytes.Compare(actualDigest, computedDigest) != 0 {
+		return nil, errors.New("got invalid digest")
+	}
 	return keyStore, nil
 }

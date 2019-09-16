@@ -1,10 +1,12 @@
 package keystore
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -12,25 +14,22 @@ const saltLen = 20
 
 var supportedPrivateKeyAlgorithmOid = asn1.ObjectIdentifier([]int{1, 3, 6, 1, 4, 1, 42, 2, 17, 1, 1})
 
-// ErrUnsupportedPrivateKeyAlgorithm indicates unsupported private key algorithm
-var ErrUnsupportedPrivateKeyAlgorithm = errors.New("keystore: unsupported private key algorithm")
-
-// ErrUnrecoverablePrivateKey indicates unrecoverable private key content (often means wrong password usage)
-var ErrUnrecoverablePrivateKey = errors.New("keystore: unrecoverable private key")
-
 type keyInfo struct {
 	Algo       pkix.AlgorithmIdentifier
 	PrivateKey []byte
 }
 
-func recoverKey(encodedKey []byte, password []byte) ([]byte, error) {
+func decrypt(data []byte, password []byte) ([]byte, error) {
 	var keyInfo keyInfo
-	asn1Rest, err := asn1.Unmarshal(encodedKey, &keyInfo)
-	if err != nil || len(asn1Rest) > 0 {
-		return nil, ErrIncorrectPrivateKey
+	asn1Rest, err := asn1.Unmarshal(data, &keyInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal encrypted key")
+	}
+	if len(asn1Rest) > 0 {
+		return nil, errors.New("got extra data in encrypted key")
 	}
 	if !keyInfo.Algo.Algorithm.Equal(supportedPrivateKeyAlgorithmOid) {
-		return nil, ErrUnsupportedPrivateKeyAlgorithm
+		return nil, errors.New("got unsupported private key encryption algorithm")
 	}
 
 	md := sha1.New()
@@ -38,27 +37,25 @@ func recoverKey(encodedKey []byte, password []byte) ([]byte, error) {
 	defer zeroing(passwordBytes)
 	salt := make([]byte, saltLen)
 	copy(salt, keyInfo.PrivateKey)
-	encrKeyLen := len(keyInfo.PrivateKey) - saltLen - md.Size()
-	numRounds := encrKeyLen / md.Size()
+	encryptedKeyLen := len(keyInfo.PrivateKey) - saltLen - md.Size()
+	numRounds := encryptedKeyLen / md.Size()
 
-	if encrKeyLen%md.Size() != 0 {
+	if encryptedKeyLen%md.Size() != 0 {
 		numRounds++
 	}
 
-	encrKey := make([]byte, encrKeyLen)
-	copy(encrKey, keyInfo.PrivateKey[saltLen:])
+	encryptedKey := make([]byte, encryptedKeyLen)
+	copy(encryptedKey, keyInfo.PrivateKey[saltLen:])
 
-	xorKey := make([]byte, encrKeyLen)
+	xorKey := make([]byte, encryptedKeyLen)
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		_, err := md.Write(passwordBytes)
-		if err != nil {
-			return nil, ErrUnrecoverablePrivateKey
+		if _, err := md.Write(passwordBytes); err != nil {
+			return nil, fmt.Errorf("failed to update digest with password on %d round: %w", i, err)
 		}
-		_, err = md.Write(digest)
-		if err != nil {
-			return nil, ErrUnrecoverablePrivateKey
+		if _, err := md.Write(digest); err != nil {
+			return nil, fmt.Errorf("failed to update digest with digest from previous round on %d round: %w", i, err)
 		}
 		digest = md.Sum(nil)
 		md.Reset()
@@ -66,36 +63,31 @@ func recoverKey(encodedKey []byte, password []byte) ([]byte, error) {
 		xorOffset += md.Size()
 	}
 
-	plainKey := make([]byte, encrKeyLen)
+	plainKey := make([]byte, encryptedKeyLen)
 	for i := 0; i < len(plainKey); i++ {
-		plainKey[i] = encrKey[i] ^ xorKey[i]
+		plainKey[i] = encryptedKey[i] ^ xorKey[i]
 	}
 
-	_, err = md.Write(passwordBytes)
-	if err != nil {
-		return nil, ErrUnrecoverablePrivateKey
+	if _, err := md.Write(passwordBytes); err != nil {
+		return nil, fmt.Errorf("failed to update digest with password: %w", err)
 	}
-	_, err = md.Write(plainKey)
-	if err != nil {
-		return nil, ErrUnrecoverablePrivateKey
+	if _, err := md.Write(plainKey); err != nil {
+		return nil, fmt.Errorf("failed to update digest with plain key: %w", err)
 	}
 	digest = md.Sum(nil)
 	md.Reset()
 
-	digestOffset := saltLen + encrKeyLen
-	for i := 0; i < len(digest); i++ {
-		if digest[i] != keyInfo.PrivateKey[digestOffset+i] {
-			return nil, ErrUnrecoverablePrivateKey
-		}
+	digestOffset := saltLen + encryptedKeyLen
+	if bytes.Compare(digest, keyInfo.PrivateKey[digestOffset:digestOffset+len(digest)]) != 0 {
+		return nil, errors.New("got invalid digest")
 	}
-
 	return plainKey, nil
 }
 
-func protectKey(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
+func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	md := sha1.New()
-	passwdBytes := passwordBytes(password)
-	defer zeroing(passwdBytes)
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
 	plainKeyLen := len(plainKey)
 	numRounds := plainKeyLen / md.Size()
 
@@ -104,22 +96,19 @@ func protectKey(rand io.Reader, plainKey []byte, password []byte) ([]byte, error
 	}
 
 	salt := make([]byte, saltLen)
-	_, err := rand.Read(salt)
-	if err != nil {
-		return nil, err
+	if _, err := rand.Read(salt); err != nil {
+		return nil, fmt.Errorf("failed to read random bytes: %w", err)
 	}
 
 	xorKey := make([]byte, plainKeyLen)
 
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
-		_, err = md.Write(passwdBytes)
-		if err != nil {
-			return nil, err
+		if _, err := md.Write(passwordBytes); err != nil {
+			return nil, fmt.Errorf("failed to update digest with password on %d round: %w", i, err)
 		}
-		_, err = md.Write(digest)
-		if err != nil {
-			return nil, err
+		if _, err := md.Write(digest); err != nil {
+			return nil, fmt.Errorf("failed to update digest with digest from prevous round on %d round: %w", i, err)
 		}
 		digest = md.Sum(nil)
 		md.Reset()
@@ -132,34 +121,32 @@ func protectKey(rand io.Reader, plainKey []byte, password []byte) ([]byte, error
 		tmpKey[i] = plainKey[i] ^ xorKey[i]
 	}
 
-	encrKey := make([]byte, saltLen+plainKeyLen+md.Size())
-	encrKeyOffset := 0
-	copy(encrKey[encrKeyOffset:], salt)
-	encrKeyOffset += saltLen
-	copy(encrKey[encrKeyOffset:], tmpKey)
-	encrKeyOffset += plainKeyLen
+	encryptedKey := make([]byte, saltLen+plainKeyLen+md.Size())
+	encryptedKeyOffset := 0
+	copy(encryptedKey[encryptedKeyOffset:], salt)
+	encryptedKeyOffset += saltLen
+	copy(encryptedKey[encryptedKeyOffset:], tmpKey)
+	encryptedKeyOffset += plainKeyLen
 
-	_, err = md.Write(passwdBytes)
-	if err != nil {
-		return nil, err
+	if _, err := md.Write(passwordBytes); err != nil {
+		return nil, fmt.Errorf("failed to update digest with password: %w", err)
 	}
-	_, err = md.Write(plainKey)
-	if err != nil {
-		return nil, err
+	if _, err := md.Write(plainKey); err != nil {
+		return nil, fmt.Errorf("failed to udpate digest with plain key: %w", err)
 	}
 	digest = md.Sum(nil)
 	md.Reset()
-	copy(encrKey[encrKeyOffset:], digest)
+	copy(encryptedKey[encryptedKeyOffset:], digest)
 	keyInfo := keyInfo{
 		Algo: pkix.AlgorithmIdentifier{
-			Algorithm: supportedPrivateKeyAlgorithmOid,
+			Algorithm:  supportedPrivateKeyAlgorithmOid,
 			Parameters: asn1.RawValue{Tag: 5},
 		},
-		PrivateKey: encrKey,
+		PrivateKey: encryptedKey,
 	}
 	encodedKey, err := asn1.Marshal(keyInfo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal encrypted key: %w", err)
 	}
 	return encodedKey, nil
 }

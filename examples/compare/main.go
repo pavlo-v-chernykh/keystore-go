@@ -1,20 +1,23 @@
-// +build ignore
-
 package main
 
 import (
-	"github.com/pavel-v-chernykh/keystore-go"
 	"log"
 	"os"
 	"reflect"
+
+	"github.com/pavel-v-chernykh/keystore-go"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	keyStore, err := keystore.Decode(f, password)
 	if err != nil {
 		log.Fatal(err)
@@ -23,12 +26,16 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 }
 
 func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
-	o, err := os.Create(filename)
-	defer o.Close()
+	f, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = keystore.Encode(o, keyStore, password)
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	err = keystore.Encode(f, keyStore, password)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,5 +56,5 @@ func main() {
 
 	ks2 := readKeyStore("keystore2.jks", password)
 
-	log.Printf("Is equal: %v\n", reflect.DeepEqual(ks1, ks2))
+	log.Printf("is equal: %v\n", reflect.DeepEqual(ks1, ks2))
 }

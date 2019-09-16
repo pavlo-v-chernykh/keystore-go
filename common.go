@@ -16,21 +16,21 @@ const (
 )
 const bufSize = 1024
 
-var order = binary.BigEndian
+var byteOrder = binary.BigEndian
 
 var whitenerMessage = []byte("Mighty Aphrodite")
 
 func passwordBytes(password []byte) []byte {
-	passwdBytes := make([]byte, 0, len(password)*2)
+	result := make([]byte, 0, len(password)*2)
 	for _, b := range password {
-		passwdBytes = append(passwdBytes, 0, b)
+		result = append(result, 0, b)
 	}
-	return passwdBytes
+	return result
 }
 
-func zeroing(s []byte) {
-	for i := 0; i < len(s); i++ {
-		s[i] = 0
+func zeroing(buf []byte) {
+	for i := 0; i < len(buf); i++ {
+		buf[i] = 0
 	}
 }
 

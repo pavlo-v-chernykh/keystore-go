@@ -15,14 +15,14 @@ type Certificate struct {
 
 // Entry is a basis of entries types supported by keystore
 type Entry struct {
-	CreationDate time.Time
+	CreationTime time.Time
 }
 
 // PrivateKeyEntry is an entry for private keys and associated certificates
 type PrivateKeyEntry struct {
 	Entry
-	PrivKey   []byte
-	CertChain []Certificate
+	PrivateKey       []byte
+	CertificateChain []Certificate
 }
 
 // TrustedCertificateEntry is an entry for certificates only

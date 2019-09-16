@@ -9,18 +9,19 @@ Take into account that JKS assumes that private keys are PKCS8 encoded.
 package main
 
 import (
-	"github.com/pavel-v-chernykh/keystore-go"
 	"log"
 	"os"
 	"reflect"
+	
+	"github.com/pavel-v-chernykh/keystore-go"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
 	keyStore, err := keystore.Decode(f, password)
 	if err != nil {
 		log.Fatal(err)
@@ -30,10 +31,10 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 
 func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
 	o, err := os.Create(filename)
-	defer o.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer o.Close()
 	err = keystore.Encode(o, keyStore, password)
 	if err != nil {
 		log.Fatal(err)

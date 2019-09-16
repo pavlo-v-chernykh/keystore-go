@@ -4,16 +4,11 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"math"
 )
-
-// ErrEncodedSequenceTooLong indicates that size of string or bytes trying to encode too big
-var ErrEncodedSequenceTooLong = errors.New("keystore: encoded sequence too long")
-
-// ErrIncorrectEntryType indicates incorrect entry type addressing
-var ErrIncorrectEntryType = errors.New("keystore: incorrect entry type")
 
 type keyStoreEncoder struct {
 	w    io.Writer
@@ -24,54 +19,46 @@ type keyStoreEncoder struct {
 
 func (kse *keyStoreEncoder) writeUint16(value uint16) error {
 	const blockSize = 2
-	order.PutUint16(kse.b[:blockSize], value)
-	_, err := kse.w.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	byteOrder.PutUint16(kse.b[:blockSize], value)
+	if _, err := kse.w.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to write uint16: %w", err)
 	}
-	_, err = kse.md.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to update digest: %w", err)
 	}
 	return nil
 }
 
 func (kse *keyStoreEncoder) writeUint32(value uint32) error {
 	const blockSize = 4
-	order.PutUint32(kse.b[:blockSize], value)
-	_, err := kse.w.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	byteOrder.PutUint32(kse.b[:blockSize], value)
+	if _, err := kse.w.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to write uint32: %w", err)
 	}
-	_, err = kse.md.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to update digest: %w", err)
 	}
 	return nil
 }
 
 func (kse *keyStoreEncoder) writeUint64(value uint64) error {
 	const blockSize = 8
-	order.PutUint64(kse.b[:blockSize], value)
-	_, err := kse.w.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	byteOrder.PutUint64(kse.b[:blockSize], value)
+	if _, err := kse.w.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to write uint64: %w", err)
 	}
-	_, err = kse.md.Write(kse.b[:blockSize])
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(kse.b[:blockSize]); err != nil {
+		return fmt.Errorf("failed to update digest: %w", err)
 	}
 	return nil
 }
 
 func (kse *keyStoreEncoder) writeBytes(value []byte) error {
-	_, err := kse.w.Write(value)
-	if err != nil {
-		return err
+	if _, err := kse.w.Write(value); err != nil {
+		return fmt.Errorf("failed to write %d bytes: %w", len(value), err)
 	}
-	_, err = kse.md.Write(value)
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(value); err != nil {
+		return fmt.Errorf("failed to update digest: %w", err)
 	}
 	return nil
 }
@@ -79,101 +66,85 @@ func (kse *keyStoreEncoder) writeBytes(value []byte) error {
 func (kse *keyStoreEncoder) writeString(value string) error {
 	strLen := len(value)
 	if strLen > math.MaxUint16 {
-		return ErrEncodedSequenceTooLong
+		return fmt.Errorf("got string %d bytes long, max length is %d", strLen, math.MaxUint16)
 	}
-	err := kse.writeUint16(uint16(strLen))
-	if err != nil {
-		return err
+	if err := kse.writeUint16(uint16(strLen)); err != nil {
+		return fmt.Errorf("failed to write length: %w", err)
 	}
-	err = kse.writeBytes([]byte(value))
-	if err != nil {
-		return err
+	if err := kse.writeBytes([]byte(value)); err != nil {
+		return fmt.Errorf("failed to write body: %w", err)
 	}
 	return nil
 }
 
-func (kse *keyStoreEncoder) writeCertificate(cert *Certificate) error {
-	err := kse.writeString(cert.Type)
-	if err != nil {
-		return err
+func (kse *keyStoreEncoder) writeCertificate(cert Certificate) error {
+	if err := kse.writeString(cert.Type); err != nil {
+		return fmt.Errorf("failed to write type: %w", err)
 	}
 	certLen := uint64(len(cert.Content))
 	if certLen > math.MaxUint32 {
-		return ErrEncodedSequenceTooLong
+		return fmt.Errorf("got certificate %d bytes long, max length is %d", certLen, math.MaxUint32)
 	}
-	err = kse.writeUint32(uint32(certLen))
-	if err != nil {
-		return err
+	if err := kse.writeUint32(uint32(certLen)); err != nil {
+		return fmt.Errorf("failed to write length: %w", err)
 	}
-	err = kse.writeBytes(cert.Content)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *TrustedCertificateEntry) error {
-	err := kse.writeUint32(trustedCertificateTag)
-	if err != nil {
-		return err
-	}
-	err = kse.writeString(alias)
-	if err != nil {
-		return err
-	}
-	err = kse.writeUint64(uint64(timeToMilliseconds(tce.CreationDate)))
-	if err != nil {
-		return err
-	}
-	err = kse.writeCertificate(&tce.Certificate)
-	if err != nil {
-		return err
+	if err := kse.writeBytes(cert.Content); err != nil {
+		return fmt.Errorf("failed to write content: %w", err)
 	}
 	return nil
 }
 
 func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEntry, password []byte) error {
-	err := kse.writeUint32(privateKeyTag)
+	if err := kse.writeUint32(privateKeyTag); err != nil {
+		return fmt.Errorf("failed to write tag: %w", err)
+	}
+	if err := kse.writeString(alias); err != nil {
+		return fmt.Errorf("failed to write alias: %w", err)
+	}
+	if err := kse.writeUint64(uint64(timeToMilliseconds(pke.CreationTime))); err != nil {
+		return fmt.Errorf("failed to write creation timestamp: %w", err)
+	}
+	encryptedContent, err := encrypt(kse.rand, pke.PrivateKey, password)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt content: %w", err)
 	}
-	err = kse.writeString(alias)
-	if err != nil {
-		return err
+	length := uint64(len(encryptedContent))
+	if length > math.MaxUint32 {
+		return fmt.Errorf("got encrypted content %d bytes long, max length is %d", length, math.MaxUint32)
 	}
-	err = kse.writeUint64(uint64(timeToMilliseconds(pke.CreationDate)))
-	if err != nil {
-		return err
+	if err := kse.writeUint32(uint32(length)); err != nil {
+		return fmt.Errorf("filed to write length: %w", err)
 	}
-	encodedPrivKeyContent, err := protectKey(kse.rand, pke.PrivKey, password)
-	if err != nil {
-		return err
+	if err := kse.writeBytes(encryptedContent); err != nil {
+		return fmt.Errorf("failed to write content: %w", err)
 	}
-	privKeyLen := uint64(len(encodedPrivKeyContent))
-	if privKeyLen > math.MaxUint32 {
-		return ErrEncodedSequenceTooLong
+	certNum := uint64(len(pke.CertificateChain))
+	if certNum > math.MaxUint32 {
+		return fmt.Errorf("got certificate chain %d entries long, max number of entries is %d", certNum, math.MaxUint32)
 	}
-	err = kse.writeUint32(uint32(privKeyLen))
-	if err != nil {
-		return err
+	if err := kse.writeUint32(uint32(certNum)); err != nil {
+		return fmt.Errorf("failed to write number of certificates: %w", err)
 	}
-	err = kse.writeBytes(encodedPrivKeyContent)
-	if err != nil {
-		return err
-	}
-	certCount := uint64(len(pke.CertChain))
-	if certCount > math.MaxUint32 {
-		return ErrEncodedSequenceTooLong
-	}
-	err = kse.writeUint32(uint32(certCount))
-	if err != nil {
-		return err
-	}
-	for _, cert := range pke.CertChain {
-		err = kse.writeCertificate(&cert)
-		if err != nil {
-			return err
+	for i, cert := range pke.CertificateChain {
+		if err := kse.writeCertificate(cert); err != nil {
+			return fmt.Errorf("failed to write %d certificate: %w", i, err)
 		}
+	}
+	return nil
+}
+
+func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *TrustedCertificateEntry) error {
+	if err := kse.writeUint32(trustedCertificateTag); err != nil {
+		return fmt.Errorf("failed to write tag: %w", err)
+	}
+	if err := kse.writeString(alias); err != nil {
+		return fmt.Errorf("failed to write alias: %w", err)
+	}
+	if err := kse.writeUint64(uint64(timeToMilliseconds(tce.CreationTime))); err != nil {
+		return fmt.Errorf("failed to write creation timestamp: %w", err)
+	}
+	if err := kse.writeCertificate(tce.Certificate); err != nil {
+		return fmt.Errorf("failed to write certificate: %w", err)
 	}
 	return nil
 }
@@ -195,47 +166,38 @@ func EncodeWithRand(rand io.Reader, w io.Writer, ks KeyStore, password []byte) e
 	}
 	passwordBytes := passwordBytes(password)
 	defer zeroing(passwordBytes)
-	_, err := kse.md.Write(passwordBytes)
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(passwordBytes); err != nil {
+		return fmt.Errorf("failed to update digest with password: %w", err)
 	}
-	_, err = kse.md.Write(whitenerMessage)
-	if err != nil {
-		return err
+	if _, err := kse.md.Write(whitenerMessage); err != nil {
+		return fmt.Errorf("failed to update digest with whitener message: %w", err)
 	}
-
-	err = kse.writeUint32(magic)
-	if err != nil {
-		return err
+	if err := kse.writeUint32(magic); err != nil {
+		return fmt.Errorf("failed to write magic: %w", err)
 	}
 	// always write latest version
-	err = kse.writeUint32(version02)
-	if err != nil {
-		return err
+	if err := kse.writeUint32(version02); err != nil {
+		return fmt.Errorf("failed to write version: %w", err)
 	}
-	err = kse.writeUint32(uint32(len(ks)))
-	if err != nil {
-		return err
+	if err := kse.writeUint32(uint32(len(ks))); err != nil {
+		return fmt.Errorf("failed to write number of entries: %w", err)
 	}
 	for alias, entry := range ks {
 		switch typedEntry := entry.(type) {
 		case *PrivateKeyEntry:
-			err = kse.writePrivateKeyEntry(alias, typedEntry, password)
-			if err != nil {
-				return err
+			if err := kse.writePrivateKeyEntry(alias, typedEntry, password); err != nil {
+				return fmt.Errorf("failed to write private key entry: %w", err)
 			}
 		case *TrustedCertificateEntry:
-			err = kse.writeTrustedCertificateEntry(alias, typedEntry)
-			if err != nil {
-				return err
+			if err := kse.writeTrustedCertificateEntry(alias, typedEntry); err != nil {
+				return fmt.Errorf("failed to write trusted certificate entry: %w", err)
 			}
 		default:
-			return ErrIncorrectEntryType
+			return errors.New("got invalid entry")
 		}
 	}
-	err = kse.writeBytes(kse.md.Sum(nil))
-	if err != nil {
-		return err
+	if err := kse.writeBytes(kse.md.Sum(nil)); err != nil {
+		return fmt.Errorf("failed to write digest")
 	}
 	return nil
 }

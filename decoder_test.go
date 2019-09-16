@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
+	"fmt"
+	"io"
 	"reflect"
 	"testing"
 )
@@ -21,19 +23,19 @@ func TestReadUint16(t *testing.T) {
 		table = append(table, readUint16Item{
 			input:  nil,
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint16: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint16Item{
 			input:  []byte{},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint16: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint16Item{
 			input:  []byte{1},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint16: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 2)
@@ -63,15 +65,15 @@ func TestReadUint16(t *testing.T) {
 			md: sha1.New(),
 		}
 		number, err := ksd.readUint16()
-		hash := ksd.md.Sum(nil)
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if !reflect.DeepEqual(err, tt.err) {
+			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 		if number != tt.number {
-			t.Errorf("Invalid uint16 '%v' '%v'", number, tt.number)
+			t.Errorf("invalid number '%v' '%v'", number, tt.number)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
@@ -88,19 +90,19 @@ func TestReadUint32(t *testing.T) {
 		table = append(table, readUint32Item{
 			input:  nil,
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint32: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint32Item{
 			input:  []byte{},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint32: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint32Item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint32: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 4)
@@ -130,15 +132,15 @@ func TestReadUint32(t *testing.T) {
 			md: sha1.New(),
 		}
 		number, err := ksd.readUint32()
-		hash := ksd.md.Sum(nil)
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if !reflect.DeepEqual(err, tt.err) {
+			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 		if number != tt.number {
-			t.Errorf("Invalid uint32 '%v' '%v'", number, tt.number)
+			t.Errorf("invalid uint32 '%v' '%v'", number, tt.number)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
@@ -155,19 +157,19 @@ func TestReadUint64(t *testing.T) {
 		table = append(table, readUint64Item{
 			input:  nil,
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint64: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint64Item{
 			input:  []byte{},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint64: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint64Item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    ErrIo,
+			err:    fmt.Errorf("failed to read uint64: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 8)
@@ -197,16 +199,15 @@ func TestReadUint64(t *testing.T) {
 			md: sha1.New(),
 		}
 		number, err := ksd.readUint64()
-		hash := ksd.md.Sum(nil)
-
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if !reflect.DeepEqual(err, tt.err) {
+			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 		if number != tt.number {
-			t.Errorf("Invalid uint64 '%v' '%v'", number, tt.number)
+			t.Errorf("invalid uint64 '%v' '%v'", number, tt.number)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
@@ -216,7 +217,6 @@ func TestReadBytes(t *testing.T) {
 		input   []byte
 		readLen uint32
 		bytes   []byte
-		err     error
 		hash    [sha1.Size]byte
 	}
 	var readUint32Table = func() []readBytesItem {
@@ -225,28 +225,24 @@ func TestReadBytes(t *testing.T) {
 			input:   nil,
 			readLen: 0,
 			bytes:   nil,
-			err:     nil,
 			hash:    sha1.Sum(nil),
 		})
 		table = append(table, readBytesItem{
 			input:   []byte{1, 2, 3},
 			readLen: 3,
 			bytes:   []byte{1, 2, 3},
-			err:     nil,
 			hash:    sha1.Sum([]byte{1, 2, 3}),
 		})
 		table = append(table, readBytesItem{
 			input:   []byte{1, 2, 3},
 			readLen: 2,
 			bytes:   []byte{1, 2},
-			err:     nil,
 			hash:    sha1.Sum([]byte{1, 2}),
 		})
 		buf := func() []byte {
 			buf := make([]byte, 10*1024)
-			_, err := rand.Read(buf)
-			if err != nil {
-				t.Errorf("Error: %v", err)
+			if _, err := rand.Read(buf); err != nil {
+				t.Errorf("failed to read random bytes: %v", err)
 			}
 			return buf
 		}()
@@ -254,7 +250,6 @@ func TestReadBytes(t *testing.T) {
 			input:   buf,
 			readLen: 9 * 1024,
 			bytes:   buf[:9*1024],
-			err:     nil,
 			hash:    sha1.Sum(buf[:9*1024]),
 		})
 		return table
@@ -266,15 +261,15 @@ func TestReadBytes(t *testing.T) {
 			md: sha1.New(),
 		}
 		bts, err := ksd.readBytes(tt.readLen)
-		hash := ksd.md.Sum(nil)
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if err != nil {
+			t.Errorf("got error '%v'", err)
 		}
 		if !reflect.DeepEqual(bts, tt.bytes) {
-			t.Errorf("Invalid bytes '%v' '%v'", bts, tt.bytes)
+			t.Errorf("invalid bytes '%v' '%v'", bts, tt.bytes)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
@@ -291,20 +286,26 @@ func TestReadString(t *testing.T) {
 		table = append(table, readStringItem{
 			input:  nil,
 			string: "",
-			err:    ErrIo,
-			hash:   sha1.Sum(nil),
+			err: fmt.Errorf("failed to read length: %w",
+				fmt.Errorf("failed to read uint16: %w",
+					io.EOF)),
+			hash: sha1.Sum(nil),
 		})
 		table = append(table, readStringItem{
 			input:  []byte{},
 			string: "",
-			err:    ErrIo,
-			hash:   sha1.Sum(nil),
+			err: fmt.Errorf("failed to read length: %w",
+				fmt.Errorf("failed to read uint16: %w",
+					io.EOF)),
+			hash: sha1.Sum(nil),
 		})
 		table = append(table, readStringItem{
 			input:  []byte{1, 2, 3},
 			string: "",
-			err:    ErrIo,
-			hash:   sha1.Sum([]byte{1, 2}),
+			err: fmt.Errorf("failed to read body: %w",
+				fmt.Errorf("failed to read 258 bytes: %w",
+					io.ErrUnexpectedEOF)),
+			hash: sha1.Sum([]byte{1, 2}),
 		})
 		str := "some string to read"
 		buf := make([]byte, 2)
@@ -325,15 +326,15 @@ func TestReadString(t *testing.T) {
 			md: sha1.New(),
 		}
 		str, err := ksd.readString()
-		hash := ksd.md.Sum(nil)
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if !reflect.DeepEqual(err, tt.err) {
+			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 		if str != tt.string {
-			t.Errorf("Invalid string '%v' '%v'", str, tt.string)
+			t.Errorf("invalid string '%v' '%v'", str, tt.string)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
@@ -353,21 +354,26 @@ func TestReadCertificate(t *testing.T) {
 			input:   nil,
 			version: version01,
 			cert:    nil,
-			err:     ErrIo,
-			hash:    sha1.Sum(nil),
+			err: fmt.Errorf("failed to read length: %w",
+				fmt.Errorf("failed to read uint32: %w",
+					io.EOF)),
+			hash: sha1.Sum(nil),
 		})
 		table = append(table, readCertificateItem{
 			input:   nil,
 			version: version02,
 			cert:    nil,
-			err:     ErrIo,
-			hash:    sha1.Sum(nil),
+			err: fmt.Errorf("failed to read type: %w",
+				fmt.Errorf("failed to read length: %w",
+					fmt.Errorf("failed to read uint16: %w",
+						io.EOF))),
+			hash: sha1.Sum(nil),
 		})
 		table = append(table, readCertificateItem{
 			input:   nil,
 			version: 3,
 			cert:    nil,
-			err:     ErrIncorrectVersion,
+			err:     fmt.Errorf("got unknown version"),
 			hash:    sha1.Sum(nil),
 		})
 		table = append(table, func() readCertificateItem {
@@ -385,7 +391,7 @@ func TestReadCertificate(t *testing.T) {
 		}())
 		table = append(table, func() readCertificateItem {
 			buf := make([]byte, 2)
-			order.PutUint16(buf, uint16(len(defaultCertificateType)))
+			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 0)
 			return readCertificateItem{
@@ -401,15 +407,17 @@ func TestReadCertificate(t *testing.T) {
 		}())
 		table = append(table, func() readCertificateItem {
 			buf := make([]byte, 2)
-			order.PutUint16(buf, uint16(len(defaultCertificateType)))
+			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 1)
 			return readCertificateItem{
 				input:   buf,
 				version: version02,
 				cert:    nil,
-				err:     ErrIo,
-				hash:    sha1.Sum(buf),
+				err: fmt.Errorf("failed to read content: %w",
+					fmt.Errorf("failed to read 1 bytes: %w",
+						io.EOF)),
+				hash: sha1.Sum(buf),
 			}
 		}())
 
@@ -422,15 +430,15 @@ func TestReadCertificate(t *testing.T) {
 			md: sha1.New(),
 		}
 		cert, err := ksd.readCertificate(tt.version)
-		hash := ksd.md.Sum(nil)
-		if err != tt.err {
-			t.Errorf("Invalid error '%v' '%v'", err, tt.err)
+		if !reflect.DeepEqual(err, tt.err) {
+			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 		if cert != nil && tt.cert != nil && !reflect.DeepEqual(cert, tt.cert) {
-			t.Errorf("Invalid certificate '%v' '%v'", cert, tt.cert)
+			t.Errorf("invalid certificate '%v' '%v'", cert, tt.cert)
 		}
+		hash := ksd.md.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("Invalid hash '%v' '%v'", hash, tt.hash)
+			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
 	}
 }
