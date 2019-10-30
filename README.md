@@ -62,4 +62,16 @@ func main() {
 
 For more examples explore [examples](examples) dir
 
+## Development
+
+1. Install [go][2]
+2. Install [mage][3]
+3. Install [golangci-lint][4]
+4. Clone the repo `git clone git@github.com:pavel-v-chernykh/keystore-go.git`
+5. Go to the project dir `cd keystore-go`
+4. Run `mage`  to format, test and lint
+
 [1]: https://docs.oracle.com/javase/7/docs/technotes/guides/security/crypto/CryptoSpec.html#KeyManagement
+[2]: https://golang.org
+[3]: https://github.com/magefile/mage
+[4]: https://github.com/golangci/golangci-lint

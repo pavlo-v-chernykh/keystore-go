@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -23,19 +24,19 @@ func TestReadUint16(t *testing.T) {
 		table = append(table, readUint16Item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("failed to read uint16: %w", io.EOF),
+			err:    fmt.Errorf("read uint16: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint16Item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint16: %w", io.EOF),
+			err:    fmt.Errorf("read uint16: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint16Item{
 			input:  []byte{1},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint16: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read uint16: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 2)
@@ -90,19 +91,19 @@ func TestReadUint32(t *testing.T) {
 		table = append(table, readUint32Item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("failed to read uint32: %w", io.EOF),
+			err:    fmt.Errorf("read uint32: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint32Item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint32: %w", io.EOF),
+			err:    fmt.Errorf("read uint32: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint32Item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint32: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read uint32: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 4)
@@ -157,19 +158,19 @@ func TestReadUint64(t *testing.T) {
 		table = append(table, readUint64Item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("failed to read uint64: %w", io.EOF),
+			err:    fmt.Errorf("read uint64: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint64Item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint64: %w", io.EOF),
+			err:    fmt.Errorf("read uint64: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
 		table = append(table, readUint64Item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    fmt.Errorf("failed to read uint64: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read uint64: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 8)
@@ -242,7 +243,7 @@ func TestReadBytes(t *testing.T) {
 		buf := func() []byte {
 			buf := make([]byte, 10*1024)
 			if _, err := rand.Read(buf); err != nil {
-				t.Errorf("failed to read random bytes: %v", err)
+				t.Errorf("read random bytes: %v", err)
 			}
 			return buf
 		}()
@@ -286,24 +287,24 @@ func TestReadString(t *testing.T) {
 		table = append(table, readStringItem{
 			input:  nil,
 			string: "",
-			err: fmt.Errorf("failed to read length: %w",
-				fmt.Errorf("failed to read uint16: %w",
+			err: fmt.Errorf("read length: %w",
+				fmt.Errorf("read uint16: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
 		table = append(table, readStringItem{
 			input:  []byte{},
 			string: "",
-			err: fmt.Errorf("failed to read length: %w",
-				fmt.Errorf("failed to read uint16: %w",
+			err: fmt.Errorf("read length: %w",
+				fmt.Errorf("read uint16: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
 		table = append(table, readStringItem{
 			input:  []byte{1, 2, 3},
 			string: "",
-			err: fmt.Errorf("failed to read body: %w",
-				fmt.Errorf("failed to read 258 bytes: %w",
+			err: fmt.Errorf("read body: %w",
+				fmt.Errorf("read 258 bytes: %w",
 					io.ErrUnexpectedEOF)),
 			hash: sha1.Sum([]byte{1, 2}),
 		})
@@ -354,8 +355,8 @@ func TestReadCertificate(t *testing.T) {
 			input:   nil,
 			version: version01,
 			cert:    nil,
-			err: fmt.Errorf("failed to read length: %w",
-				fmt.Errorf("failed to read uint32: %w",
+			err: fmt.Errorf("read length: %w",
+				fmt.Errorf("read uint32: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
@@ -363,9 +364,9 @@ func TestReadCertificate(t *testing.T) {
 			input:   nil,
 			version: version02,
 			cert:    nil,
-			err: fmt.Errorf("failed to read type: %w",
-				fmt.Errorf("failed to read length: %w",
-					fmt.Errorf("failed to read uint16: %w",
+			err: fmt.Errorf("read type: %w",
+				fmt.Errorf("read length: %w",
+					fmt.Errorf("read uint16: %w",
 						io.EOF))),
 			hash: sha1.Sum(nil),
 		})
@@ -373,7 +374,7 @@ func TestReadCertificate(t *testing.T) {
 			input:   nil,
 			version: 3,
 			cert:    nil,
-			err:     fmt.Errorf("got unknown version"),
+			err:     errors.New("got unknown version"),
 			hash:    sha1.Sum(nil),
 		})
 		table = append(table, func() readCertificateItem {
@@ -414,8 +415,8 @@ func TestReadCertificate(t *testing.T) {
 				input:   buf,
 				version: version02,
 				cert:    nil,
-				err: fmt.Errorf("failed to read content: %w",
-					fmt.Errorf("failed to read 1 bytes: %w",
+				err: fmt.Errorf("read content: %w",
+					fmt.Errorf("read 1 bytes: %w",
 						io.EOF)),
 				hash: sha1.Sum(buf),
 			}

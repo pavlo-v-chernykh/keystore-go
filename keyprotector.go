@@ -23,7 +23,7 @@ func decrypt(data []byte, password []byte) ([]byte, error) {
 	var keyInfo keyInfo
 	asn1Rest, err := asn1.Unmarshal(data, &keyInfo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal encrypted key")
+		return nil, fmt.Errorf("unmarshal encrypted key: %w", err)
 	}
 	if len(asn1Rest) > 0 {
 		return nil, errors.New("got extra data in encrypted key")
@@ -52,10 +52,10 @@ func decrypt(data []byte, password []byte) ([]byte, error) {
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
 		if _, err := md.Write(passwordBytes); err != nil {
-			return nil, fmt.Errorf("failed to update digest with password on %d round: %w", i, err)
+			return nil, fmt.Errorf("update digest with password on %d round: %w", i, err)
 		}
 		if _, err := md.Write(digest); err != nil {
-			return nil, fmt.Errorf("failed to update digest with digest from previous round on %d round: %w", i, err)
+			return nil, fmt.Errorf("update digest with digest from previous round on %d round: %w", i, err)
 		}
 		digest = md.Sum(nil)
 		md.Reset()
@@ -69,16 +69,16 @@ func decrypt(data []byte, password []byte) ([]byte, error) {
 	}
 
 	if _, err := md.Write(passwordBytes); err != nil {
-		return nil, fmt.Errorf("failed to update digest with password: %w", err)
+		return nil, fmt.Errorf("update digest with password: %w", err)
 	}
 	if _, err := md.Write(plainKey); err != nil {
-		return nil, fmt.Errorf("failed to update digest with plain key: %w", err)
+		return nil, fmt.Errorf("update digest with plain key: %w", err)
 	}
 	digest = md.Sum(nil)
 	md.Reset()
 
 	digestOffset := saltLen + encryptedKeyLen
-	if bytes.Compare(digest, keyInfo.PrivateKey[digestOffset:digestOffset+len(digest)]) != 0 {
+	if !bytes.Equal(digest, keyInfo.PrivateKey[digestOffset:digestOffset+len(digest)]) {
 		return nil, errors.New("got invalid digest")
 	}
 	return plainKey, nil
@@ -97,7 +97,7 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, fmt.Errorf("failed to read random bytes: %w", err)
+		return nil, fmt.Errorf("read random bytes: %w", err)
 	}
 
 	xorKey := make([]byte, plainKeyLen)
@@ -105,10 +105,10 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	digest := salt
 	for i, xorOffset := 0, 0; i < numRounds; i++ {
 		if _, err := md.Write(passwordBytes); err != nil {
-			return nil, fmt.Errorf("failed to update digest with password on %d round: %w", i, err)
+			return nil, fmt.Errorf("update digest with password on %d round: %w", i, err)
 		}
 		if _, err := md.Write(digest); err != nil {
-			return nil, fmt.Errorf("failed to update digest with digest from prevous round on %d round: %w", i, err)
+			return nil, fmt.Errorf("update digest with digest from prevous round on %d round: %w", i, err)
 		}
 		digest = md.Sum(nil)
 		md.Reset()
@@ -129,10 +129,10 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	encryptedKeyOffset += plainKeyLen
 
 	if _, err := md.Write(passwordBytes); err != nil {
-		return nil, fmt.Errorf("failed to update digest with password: %w", err)
+		return nil, fmt.Errorf("update digest with password: %w", err)
 	}
 	if _, err := md.Write(plainKey); err != nil {
-		return nil, fmt.Errorf("failed to udpate digest with plain key: %w", err)
+		return nil, fmt.Errorf("udpate digest with plain key: %w", err)
 	}
 	digest = md.Sum(nil)
 	md.Reset()
@@ -146,7 +146,7 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	}
 	encodedKey, err := asn1.Marshal(keyInfo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal encrypted key: %w", err)
+		return nil, fmt.Errorf("marshal encrypted key: %w", err)
 	}
 	return encodedKey, nil
 }
