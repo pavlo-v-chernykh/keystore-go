@@ -8,14 +8,10 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
-const (
-	majordomoFmtPkg = "github.com/pavel-v-chernykh/keystore-go/..."
-)
-
 var Default = All
 
 func Fmt() error {
-	if err := sh.Run("go", "fmt", majordomoFmtPkg); err != nil {
+	if err := sh.Run("go", "fmt", "github.com/pavel-v-chernykh/keystore-go/..."); err != nil {
 		return fmt.Errorf("go fmt: %w", err)
 	}
 	return nil
