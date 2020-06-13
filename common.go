@@ -25,6 +25,7 @@ func passwordBytes(password []byte) []byte {
 	for _, b := range password {
 		result = append(result, 0, b)
 	}
+
 	return result
 }
 

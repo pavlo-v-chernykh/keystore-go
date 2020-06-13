@@ -1,0 +1,28 @@
+modules-download-mode: readonly
+
+linters:
+  enable-all: true
+  disable:
+    - gochecknoglobals
+    - funlen
+    - goerr113
+
+linters-settings:
+  gomnd:
+    settings:
+      mnd:
+        checks: case,condition,return
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - testpackage
+        - maligned
+        - dupl
+    - linters:
+        - gosec
+      text: "G401: "
+    - linters:
+        - gosec
+      text: "G505: "
