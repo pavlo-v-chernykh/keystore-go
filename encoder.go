@@ -83,7 +83,7 @@ func (kse *keyStoreEncoder) writeCertificate(cert Certificate) error {
 	}
 	certLen := uint64(len(cert.Content))
 	if certLen > math.MaxUint32 {
-		return fmt.Errorf("got certificate %d bytes long, max length is %d", certLen, math.MaxUint32)
+		return fmt.Errorf("got certificate %d bytes long, max length is %d", certLen, uint64(math.MaxUint32))
 	}
 	if err := kse.writeUint32(uint32(certLen)); err != nil {
 		return fmt.Errorf("write length: %w", err)
@@ -110,7 +110,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	}
 	length := uint64(len(encryptedContent))
 	if length > math.MaxUint32 {
-		return fmt.Errorf("got encrypted content %d bytes long, max length is %d", length, math.MaxUint32)
+		return fmt.Errorf("got encrypted content %d bytes long, max length is %d", length, uint64(math.MaxUint32))
 	}
 	if err := kse.writeUint32(uint32(length)); err != nil {
 		return fmt.Errorf("filed to write length: %w", err)
@@ -120,7 +120,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	}
 	certNum := uint64(len(pke.CertificateChain))
 	if certNum > math.MaxUint32 {
-		return fmt.Errorf("got certificate chain %d entries long, max number of entries is %d", certNum, math.MaxUint32)
+		return fmt.Errorf("got certificate chain %d entries long, max number of entries is %d", certNum, uint64(math.MaxUint32))
 	}
 	if err := kse.writeUint32(uint32(certNum)); err != nil {
 		return fmt.Errorf("write number of certificates: %w", err)
