@@ -1,7 +1,9 @@
-module github.com/pavel-v-chernykh/keystore-go/examples/compare
+module github.com/pavel-v-chernykh/keystore-go/v3/examples/compare
 
-go 1.13
+go 1.14
 
-require github.com/pavel-v-chernykh/keystore-go v0.0.0
+require github.com/pavel-v-chernykh/keystore-go/v3 v3.0.0
 
-replace github.com/pavel-v-chernykh/keystore-go => ../..
+replace (
+    github.com/pavel-v-chernykh/keystore-go/v3 v3.0.0 => ../..
+)

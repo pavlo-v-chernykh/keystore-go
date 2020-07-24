@@ -1,5 +1,5 @@
 fmt:
-	go fmt github.com/pavel-v-chernykh/keystore-go/...
+	go fmt github.com/pavel-v-chernykh/keystore-go/v3/...
 
 lint:
 	golangci-lint run -c .golangci.yaml
