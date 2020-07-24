@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/pavel-v-chernykh/keystore-go"
+	"github.com/pavel-v-chernykh/keystore-go/v3"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
