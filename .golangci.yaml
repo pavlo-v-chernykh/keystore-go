@@ -6,6 +6,7 @@ linters:
     - gochecknoglobals
     - funlen
     - goerr113
+    - gofumpt
 
 linters-settings:
   gomnd:

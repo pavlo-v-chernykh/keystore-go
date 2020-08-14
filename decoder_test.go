@@ -5,11 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestReadUint16(t *testing.T) {
@@ -58,6 +62,7 @@ func TestReadUint16(t *testing.T) {
 			err:    nil,
 			hash:   sha1.Sum(buf),
 		})
+
 		return table
 	}()
 
@@ -129,6 +134,7 @@ func TestReadUint32(t *testing.T) {
 			err:    nil,
 			hash:   sha1.Sum(buf),
 		})
+
 		return table
 	}()
 
@@ -408,6 +414,7 @@ func TestReadCertificate(t *testing.T) {
 		})
 		table = append(table, func() readCertificateItem {
 			input := []byte{0, 0, 0, 0}
+
 			return readCertificateItem{
 				input:   input,
 				version: version01,
@@ -424,6 +431,7 @@ func TestReadCertificate(t *testing.T) {
 			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 0)
+
 			return readCertificateItem{
 				input:   buf,
 				version: version02,
@@ -440,6 +448,7 @@ func TestReadCertificate(t *testing.T) {
 			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 1)
+
 			return readCertificateItem{
 				input:   buf,
 				version: version02,
@@ -473,5 +482,55 @@ func TestReadCertificate(t *testing.T) {
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
+	}
+}
+
+func TestDecode(t *testing.T) {
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+
+	f, err := os.Open("./testdata/keystore.jks")
+	if err != nil {
+		t.Fatalf("open test data keystore file: %s", err)
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Fatalf("close test data keystore file: %s", err)
+		}
+	}()
+
+	keyStore, err := Decode(f, password)
+	if err != nil {
+		t.Fatalf("decode test data keystore: %s", err)
+	}
+
+	actualPKE, ok := keyStore["alias"].(*PrivateKeyEntry)
+	if !ok {
+		t.Fatalf("assert private key entry")
+	}
+
+	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2017-09-19 17:41:00.016 +0300 EEST")
+	if err != nil {
+		t.Fatalf("parse creation time: %s", err)
+	}
+
+	if !actualPKE.CreationTime.Equal(expectedCT) {
+		t.Errorf("unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
+	}
+
+	if len(actualPKE.CertificateChain) != 0 {
+		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
+	}
+
+	pkPEM, err := ioutil.ReadFile("./testdata/privkey.pem")
+	if err != nil {
+		t.Fatalf("read expected private key file: %s", err)
+	}
+
+	decodedPK, _ := pem.Decode(pkPEM)
+
+	if !reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes) {
+		t.Errorf("unexpected private key")
 	}
 }

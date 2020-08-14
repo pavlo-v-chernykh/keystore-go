@@ -283,12 +283,13 @@ func Decode(r io.Reader, password []byte) (KeyStore, error) {
 		keyStore[alias] = entry
 	}
 
+	computedDigest := ksd.md.Sum(nil)
+
 	actualDigest, err := ksd.readBytes(uint32(ksd.md.Size()))
 	if err != nil {
 		return nil, fmt.Errorf("read digest: %w", err)
 	}
 
-	computedDigest := ksd.md.Sum(nil)
 	if !bytes.Equal(actualDigest, computedDigest) {
 		return nil, errors.New("got invalid digest")
 	}
