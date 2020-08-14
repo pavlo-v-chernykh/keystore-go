@@ -20,10 +20,10 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v2
       - name: Lint
-        uses: golangci/golangci-lint-action@v1.2.1
+        uses: golangci/golangci-lint-action@v2.2.0
         with:
           args: --timeout=5m0s -c .golangci.yaml
-          version: v1.27
+          version: v1.30
   test:
     name: Test
     runs-on: ubuntu-latest
