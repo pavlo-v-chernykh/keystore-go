@@ -534,3 +534,58 @@ func TestDecode(t *testing.T) {
 		t.Errorf("unexpected private key")
 	}
 }
+
+func TestDecodeKeyPassword(t *testing.T) {
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
+
+	keyPassword := []byte{'k', 'e', 'y', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(keyPassword)
+
+	f, err := os.Open("./testdata/keystore_keypass.jks")
+	if err != nil {
+		t.Fatalf("open test data keystore file: %s", err)
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Fatalf("close test data keystore file: %s", err)
+		}
+	}()
+
+	kp := KeyPassword{Alias: "alias", Password: keyPassword}
+
+	keyStore, err := Decode(f, password, kp)
+	if err != nil {
+		t.Fatalf("decode test data keystore: %s", err)
+	}
+
+	actualPKE, ok := keyStore["alias"].(*PrivateKeyEntry)
+	if !ok {
+		t.Fatalf("assert private key entry")
+	}
+
+	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2020-10-26 12:01:38.387 +0200 EET")
+	if err != nil {
+		t.Fatalf("parse creation time: %s", err)
+	}
+
+	if !actualPKE.CreationTime.Equal(expectedCT) {
+		t.Errorf("unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
+	}
+
+	if len(actualPKE.CertificateChain) != 1 {
+		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
+	}
+
+	pkPEM, err := ioutil.ReadFile("./testdata/privkey_keypass.pem")
+	if err != nil {
+		t.Fatalf("read expected private key file: %s", err)
+	}
+
+	decodedPK, _ := pem.Decode(pkPEM)
+
+	if !reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes) {
+		t.Errorf("unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
+	}
+}

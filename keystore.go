@@ -30,3 +30,8 @@ type TrustedCertificateEntry struct {
 	Entry
 	Certificate Certificate
 }
+
+type KeyPassword struct {
+	Alias    string
+	Password []byte
+}
