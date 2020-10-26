@@ -203,7 +203,9 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*Truste
 	return &trustedCertificateEntry, nil
 }
 
-func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, interface{}, error) {
+func (ksd *keyStoreDecoder) readEntry(
+	version uint32, storePassword []byte, keysPasswords ...KeyPassword,
+) (string, interface{}, error) {
 	tag, err := ksd.readUint32()
 	if err != nil {
 		return "", nil, fmt.Errorf("read tag: %w", err)
@@ -216,7 +218,15 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, 
 
 	switch tag {
 	case privateKeyTag:
-		entry, err := ksd.readPrivateKeyEntry(version, password)
+		keyPassword := storePassword
+
+		for _, kp := range keysPasswords {
+			if kp.Alias == alias {
+				keyPassword = kp.Password
+			}
+		}
+
+		entry, err := ksd.readPrivateKeyEntry(version, keyPassword)
 		if err != nil {
 			return "", nil, fmt.Errorf("read private key entry: %w", err)
 		}
@@ -234,18 +244,19 @@ func (ksd *keyStoreDecoder) readEntry(version uint32, password []byte) (string, 
 	}
 }
 
-// Decode reads keystore representation from r then decrypts and check signature using password
+// Decode reads keystore representation from r then decrypts and check signature using password.
 // It is strongly recommended to fill password slice with zero after usage.
-func Decode(r io.Reader, password []byte) (KeyStore, error) {
+// keysPasswords can be used to decrypt private key entries with passwords other then storePassword.
+func Decode(r io.Reader, storePassword []byte, keysPasswords ...KeyPassword) (KeyStore, error) {
 	ksd := keyStoreDecoder{
 		r:  r,
 		md: sha1.New(),
 	}
 
-	passwordBytes := passwordBytes(password)
-	defer zeroing(passwordBytes)
+	storePasswordBytes := passwordBytes(storePassword)
+	defer zeroing(storePasswordBytes)
 
-	if _, err := ksd.md.Write(passwordBytes); err != nil {
+	if _, err := ksd.md.Write(storePasswordBytes); err != nil {
 		return nil, fmt.Errorf("update digest with password: %w", err)
 	}
 
@@ -275,7 +286,7 @@ func Decode(r io.Reader, password []byte) (KeyStore, error) {
 	keyStore := make(KeyStore, entryNum)
 
 	for i := uint32(0); i < entryNum; i++ {
-		alias, entry, err := ksd.readEntry(version, password)
+		alias, entry, err := ksd.readEntry(version, storePassword, keysPasswords...)
 		if err != nil {
 			return nil, fmt.Errorf("read %d entry: %w", i, err)
 		}
