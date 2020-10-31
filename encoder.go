@@ -1,9 +1,6 @@
 package keystore
 
 import (
-	"crypto/rand"
-	"crypto/sha1"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -11,10 +8,9 @@ import (
 )
 
 type keyStoreEncoder struct {
-	w    io.Writer
-	b    [bufSize]byte
-	md   hash.Hash
-	rand io.Reader
+	w  io.Writer
+	b  [bufSize]byte
+	md hash.Hash
 }
 
 func (kse *keyStoreEncoder) writeUint16(value uint16) error {
@@ -115,7 +111,7 @@ func (kse *keyStoreEncoder) writeCertificate(cert Certificate) error {
 	return nil
 }
 
-func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEntry, password []byte) error {
+func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke PrivateKeyEntry) error {
 	if err := kse.writeUint32(privateKeyTag); err != nil {
 		return fmt.Errorf("write tag: %w", err)
 	}
@@ -128,12 +124,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 		return fmt.Errorf("write creation timestamp: %w", err)
 	}
 
-	encryptedContent, err := encrypt(kse.rand, pke.PrivateKey, password)
-	if err != nil {
-		return fmt.Errorf("encrypt content: %w", err)
-	}
-
-	length := uint64(len(encryptedContent))
+	length := uint64(len(pke.encryptedPrivateKey))
 	if length > math.MaxUint32 {
 		return fmt.Errorf("got encrypted content %d bytes long, max length is %d", length, uint64(math.MaxUint32))
 	}
@@ -142,7 +133,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 		return fmt.Errorf("filed to write length: %w", err)
 	}
 
-	if err := kse.writeBytes(encryptedContent); err != nil {
+	if err := kse.writeBytes(pke.encryptedPrivateKey); err != nil {
 		return fmt.Errorf("write content: %w", err)
 	}
 
@@ -165,7 +156,7 @@ func (kse *keyStoreEncoder) writePrivateKeyEntry(alias string, pke *PrivateKeyEn
 	return nil
 }
 
-func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *TrustedCertificateEntry) error {
+func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce TrustedCertificateEntry) error {
 	if err := kse.writeUint32(trustedCertificateTag); err != nil {
 		return fmt.Errorf("write tag: %w", err)
 	}
@@ -180,67 +171,6 @@ func (kse *keyStoreEncoder) writeTrustedCertificateEntry(alias string, tce *Trus
 
 	if err := kse.writeCertificate(tce.Certificate); err != nil {
 		return fmt.Errorf("write certificate: %w", err)
-	}
-
-	return nil
-}
-
-// Encode encrypts and signs keystore using password and writes its representation into w
-// It is strongly recommended to fill password slice with zero after usage.
-func Encode(w io.Writer, ks KeyStore, password []byte) error {
-	return EncodeWithRand(rand.Reader, w, ks, password)
-}
-
-// Encode encrypts and signs keystore using password and writes its representation into w
-// Random bytes are read from rand, which must be a cryptographically secure source of randomness
-// It is strongly recommended to fill password slice with zero after usage.
-func EncodeWithRand(rand io.Reader, w io.Writer, ks KeyStore, password []byte) error {
-	kse := keyStoreEncoder{
-		w:    w,
-		md:   sha1.New(),
-		rand: rand,
-	}
-
-	passwordBytes := passwordBytes(password)
-	defer zeroing(passwordBytes)
-
-	if _, err := kse.md.Write(passwordBytes); err != nil {
-		return fmt.Errorf("update digest with password: %w", err)
-	}
-
-	if _, err := kse.md.Write(whitenerMessage); err != nil {
-		return fmt.Errorf("update digest with whitener message: %w", err)
-	}
-
-	if err := kse.writeUint32(magic); err != nil {
-		return fmt.Errorf("write magic: %w", err)
-	}
-	// always write latest version
-	if err := kse.writeUint32(version02); err != nil {
-		return fmt.Errorf("write version: %w", err)
-	}
-
-	if err := kse.writeUint32(uint32(len(ks))); err != nil {
-		return fmt.Errorf("write number of entries: %w", err)
-	}
-
-	for alias, entry := range ks {
-		switch typedEntry := entry.(type) {
-		case *PrivateKeyEntry:
-			if err := kse.writePrivateKeyEntry(alias, typedEntry, password); err != nil {
-				return fmt.Errorf("write private key entry: %w", err)
-			}
-		case *TrustedCertificateEntry:
-			if err := kse.writeTrustedCertificateEntry(alias, typedEntry); err != nil {
-				return fmt.Errorf("write trusted certificate entry: %w", err)
-			}
-		default:
-			return errors.New("got invalid entry")
-		}
-	}
-
-	if err := kse.writeBytes(kse.md.Sum(nil)); err != nil {
-		return fmt.Errorf("write digest: %w", err)
 	}
 
 	return nil

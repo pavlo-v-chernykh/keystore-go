@@ -1,11 +1,46 @@
 package keystore
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/sha1"
+	"errors"
+	"fmt"
+	"io"
+	"sort"
 	"time"
 )
 
+var (
+	ErrEntryNotFound           = errors.New("entry not found")
+	ErrWrongEntryType          = errors.New("wrong entry type")
+	ErrEmptyPrivateKey         = errors.New("empty private key")
+	ErrEmptyCertificateType    = errors.New("empty certificate type")
+	ErrEmptyCertificateContent = errors.New("empty certificate content")
+	ErrShortPassword           = errors.New("short password")
+)
+
+const minPasswordLen = 6
+
 // KeyStore is a mapping of alias to pointer to PrivateKeyEntry or TrustedCertificateEntry.
-type KeyStore map[string]interface{}
+type KeyStore struct {
+	m map[string]interface{}
+}
+
+// PrivateKeyEntry is an entry for private keys and associated certificates.
+type PrivateKeyEntry struct {
+	encryptedPrivateKey []byte
+
+	CreationTime     time.Time
+	PrivateKey       []byte
+	CertificateChain []Certificate
+}
+
+// TrustedCertificateEntry is an entry for certificates only.
+type TrustedCertificateEntry struct {
+	CreationTime time.Time
+	Certificate  Certificate
+}
 
 // Certificate describes type of certificate.
 type Certificate struct {
@@ -13,25 +48,254 @@ type Certificate struct {
 	Content []byte
 }
 
-// Entry is a basis of entries types supported by keystore.
-type Entry struct {
-	CreationTime time.Time
+// New returns new initialized instance of the KeyStore.
+func New() KeyStore {
+	return KeyStore{m: make(map[string]interface{})}
 }
 
-// PrivateKeyEntry is an entry for private keys and associated certificates.
-type PrivateKeyEntry struct {
-	Entry
-	PrivateKey       []byte
-	CertificateChain []Certificate
+// Store signs keystore using password and writes its representation into w
+// It is strongly recommended to fill password slice with zero after usage.
+func (ks KeyStore) Store(w io.Writer, password []byte) error {
+	if len(password) < minPasswordLen {
+		return fmt.Errorf("password must be at least %d characters: %w", minPasswordLen, ErrShortPassword)
+	}
+
+	kse := keyStoreEncoder{
+		w:  w,
+		md: sha1.New(),
+	}
+
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
+
+	if _, err := kse.md.Write(passwordBytes); err != nil {
+		return fmt.Errorf("update digest with password: %w", err)
+	}
+
+	if _, err := kse.md.Write(whitenerMessage); err != nil {
+		return fmt.Errorf("update digest with whitener message: %w", err)
+	}
+
+	if err := kse.writeUint32(magic); err != nil {
+		return fmt.Errorf("write magic: %w", err)
+	}
+	// always write latest version
+	if err := kse.writeUint32(version02); err != nil {
+		return fmt.Errorf("write version: %w", err)
+	}
+
+	if err := kse.writeUint32(uint32(len(ks.m))); err != nil {
+		return fmt.Errorf("write number of entries: %w", err)
+	}
+
+	for alias, entry := range ks.m {
+		switch typedEntry := entry.(type) {
+		case PrivateKeyEntry:
+			if err := kse.writePrivateKeyEntry(alias, typedEntry); err != nil {
+				return fmt.Errorf("write private key entry: %w", err)
+			}
+		case TrustedCertificateEntry:
+			if err := kse.writeTrustedCertificateEntry(alias, typedEntry); err != nil {
+				return fmt.Errorf("write trusted certificate entry: %w", err)
+			}
+		default:
+			return errors.New("got invalid entry")
+		}
+	}
+
+	if err := kse.writeBytes(kse.md.Sum(nil)); err != nil {
+		return fmt.Errorf("write digest: %w", err)
+	}
+
+	return nil
 }
 
-// TrustedCertificateEntry is an entry for certificates only.
-type TrustedCertificateEntry struct {
-	Entry
-	Certificate Certificate
+// Load reads keystore representation from r and checks its signature.
+// It is strongly recommended to fill password slice with zero after usage.
+func (ks KeyStore) Load(r io.Reader, password []byte) error {
+	ksd := keyStoreDecoder{
+		r:  r,
+		md: sha1.New(),
+	}
+
+	passwordBytes := passwordBytes(password)
+	defer zeroing(passwordBytes)
+
+	if _, err := ksd.md.Write(passwordBytes); err != nil {
+		return fmt.Errorf("update digest with password: %w", err)
+	}
+
+	if _, err := ksd.md.Write(whitenerMessage); err != nil {
+		return fmt.Errorf("update digest with whitener message: %w", err)
+	}
+
+	readMagic, err := ksd.readUint32()
+	if err != nil {
+		return fmt.Errorf("read magic: %w", err)
+	}
+
+	if readMagic != magic {
+		return errors.New("got invalid magic")
+	}
+
+	version, err := ksd.readUint32()
+	if err != nil {
+		return fmt.Errorf("read version: %w", err)
+	}
+
+	entryNum, err := ksd.readUint32()
+	if err != nil {
+		return fmt.Errorf("read number of entries: %w", err)
+	}
+
+	for i := uint32(0); i < entryNum; i++ {
+		alias, entry, err := ksd.readEntry(version)
+		if err != nil {
+			return fmt.Errorf("read %d entry: %w", i, err)
+		}
+
+		ks.m[alias] = entry
+	}
+
+	computedDigest := ksd.md.Sum(nil)
+
+	actualDigest, err := ksd.readBytes(uint32(ksd.md.Size()))
+	if err != nil {
+		return fmt.Errorf("read digest: %w", err)
+	}
+
+	if !bytes.Equal(actualDigest, computedDigest) {
+		return errors.New("got invalid digest")
+	}
+
+	return nil
 }
 
-type KeyPassword struct {
-	Alias    string
-	Password []byte
+// SetPrivateKeyEntry adds PrivateKeyEntry into keystore by alias encrypted with password.
+// It is strongly recommended to fill password slice with zero after usage.
+func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, password []byte) error {
+	if err := entry.validate(); err != nil {
+		return fmt.Errorf("validate private key entry: %w", err)
+	}
+
+	if len(password) < minPasswordLen {
+		return fmt.Errorf("password must be at least %d characters: %w", minPasswordLen, ErrShortPassword)
+	}
+
+	epk, err := encrypt(rand.Reader, entry.PrivateKey, password)
+	if err != nil {
+		return fmt.Errorf("encrypt private key: %w", err)
+	}
+
+	entry.encryptedPrivateKey = epk
+
+	ks.m[alias] = entry
+
+	return nil
+}
+
+// GetPrivateKeyEntry returns PrivateKeyEntry from the keystore by the alias decrypted with the password.
+// It is strongly recommended to fill password slice with zero after usage.
+func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKeyEntry, error) {
+	e, ok := ks.m[alias]
+	if !ok {
+		return PrivateKeyEntry{}, ErrEntryNotFound
+	}
+
+	pke, ok := e.(PrivateKeyEntry)
+	if !ok {
+		return PrivateKeyEntry{}, ErrWrongEntryType
+	}
+
+	dpk, err := decrypt(pke.encryptedPrivateKey, password)
+	if err != nil {
+		return PrivateKeyEntry{}, fmt.Errorf("decrypte private key: %w", err)
+	}
+
+	pke.encryptedPrivateKey = nil
+	pke.PrivateKey = dpk
+
+	return pke, nil
+}
+
+// IsPrivateKeyEntry returns true if the keystore has PrivateKeyEntry by the alias.
+func (ks KeyStore) IsPrivateKeyEntry(alias string) bool {
+	_, ok := ks.m[alias].(PrivateKeyEntry)
+
+	return ok
+}
+
+// SetTrustedCertificateEntry adds TrustedCertificateEntry into keystore by alias.
+func (ks KeyStore) SetTrustedCertificateEntry(alias string, entry TrustedCertificateEntry) error {
+	if err := entry.validate(); err != nil {
+		return fmt.Errorf("validate trusted certificate entry: %w", err)
+	}
+
+	ks.m[alias] = entry
+
+	return nil
+}
+
+// GetTrustedCertificateEntry returns TrustedCertificateEntry from the keystore by the alias.
+func (ks KeyStore) GetTrustedCertificateEntry(alias string) (TrustedCertificateEntry, error) {
+	e, ok := ks.m[alias]
+	if !ok {
+		return TrustedCertificateEntry{}, ErrEntryNotFound
+	}
+
+	tce, ok := e.(TrustedCertificateEntry)
+	if !ok {
+		return TrustedCertificateEntry{}, ErrWrongEntryType
+	}
+
+	return tce, nil
+}
+
+// IsTrustedCertificateEntry returns true if the keystore has TrustedCertificateEntry by the alias.
+func (ks KeyStore) IsTrustedCertificateEntry(alias string) bool {
+	_, ok := ks.m[alias].(TrustedCertificateEntry)
+
+	return ok
+}
+
+// Aliases returns slice of all aliases from the keystore sorted alphabetically.
+func (ks KeyStore) Aliases() []string {
+	as := make([]string, 0, len(ks.m))
+	for a := range ks.m {
+		as = append(as, a)
+	}
+
+	sort.Strings(as)
+
+	return as
+}
+
+func (e PrivateKeyEntry) validate() error {
+	if len(e.PrivateKey) == 0 {
+		return ErrEmptyPrivateKey
+	}
+
+	for i, c := range e.CertificateChain {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("validate certificate %d in chain: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+func (e TrustedCertificateEntry) validate() error {
+	return e.Certificate.validate()
+}
+
+func (c Certificate) validate() error {
+	if len(c.Type) == 0 {
+		return ErrEmptyCertificateType
+	}
+
+	if len(c.Content) == 0 {
+		return ErrEmptyCertificateContent
+	}
+
+	return nil
 }

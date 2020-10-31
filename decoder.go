@@ -1,8 +1,6 @@
 package keystore
 
 import (
-	"bytes"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"hash"
@@ -97,7 +95,7 @@ func (ksd *keyStoreDecoder) readString() (string, error) {
 	return string(strBody), nil
 }
 
-func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error) {
+func (ksd *keyStoreDecoder) readCertificate(version uint32) (Certificate, error) {
 	var certType string
 
 	switch version {
@@ -106,22 +104,22 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 	case version02:
 		readCertType, err := ksd.readString()
 		if err != nil {
-			return nil, fmt.Errorf("read type: %w", err)
+			return Certificate{}, fmt.Errorf("read type: %w", err)
 		}
 
 		certType = readCertType
 	default:
-		return nil, errors.New("got unknown version")
+		return Certificate{}, errors.New("got unknown version")
 	}
 
 	certLen, err := ksd.readUint32()
 	if err != nil {
-		return nil, fmt.Errorf("read length: %w", err)
+		return Certificate{}, fmt.Errorf("read length: %w", err)
 	}
 
 	certContent, err := ksd.readBytes(certLen)
 	if err != nil {
-		return nil, fmt.Errorf("read content: %w", err)
+		return Certificate{}, fmt.Errorf("read content: %w", err)
 	}
 
 	certificate := Certificate{
@@ -129,28 +127,28 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (*Certificate, error
 		Content: certContent,
 	}
 
-	return &certificate, nil
+	return certificate, nil
 }
 
-func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte) (*PrivateKeyEntry, error) {
+func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 	creationTimeStamp, err := ksd.readUint64()
 	if err != nil {
-		return nil, fmt.Errorf("read creation timestamp: %w", err)
+		return PrivateKeyEntry{}, fmt.Errorf("read creation timestamp: %w", err)
 	}
 
 	length, err := ksd.readUint32()
 	if err != nil {
-		return nil, fmt.Errorf("read length: %w", err)
+		return PrivateKeyEntry{}, fmt.Errorf("read length: %w", err)
 	}
 
 	encryptedPrivateKey, err := ksd.readBytes(length)
 	if err != nil {
-		return nil, fmt.Errorf("read encrypted private key: %w", err)
+		return PrivateKeyEntry{}, fmt.Errorf("read encrypted private key: %w", err)
 	}
 
 	certNum, err := ksd.readUint32()
 	if err != nil {
-		return nil, fmt.Errorf("read number of certificates: %w", err)
+		return PrivateKeyEntry{}, fmt.Errorf("read number of certificates: %w", err)
 	}
 
 	chain := make([]Certificate, 0, certNum)
@@ -158,54 +156,43 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32, password []byte)
 	for i := uint32(0); i < certNum; i++ {
 		cert, err := ksd.readCertificate(version)
 		if err != nil {
-			return nil, fmt.Errorf("read %d certificate: %w", i, err)
+			return PrivateKeyEntry{}, fmt.Errorf("read %d certificate: %w", i, err)
 		}
 
-		chain = append(chain, *cert)
-	}
-
-	decryptedPrivateKey, err := decrypt(encryptedPrivateKey, password)
-	if err != nil {
-		return nil, fmt.Errorf("decrypt content: %w", err)
+		chain = append(chain, cert)
 	}
 
 	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
 	privateKeyEntry := PrivateKeyEntry{
-		Entry: Entry{
-			CreationTime: creationDateTime,
-		},
-		PrivateKey:       decryptedPrivateKey,
-		CertificateChain: chain,
+		encryptedPrivateKey: encryptedPrivateKey,
+		CreationTime:        creationDateTime,
+		CertificateChain:    chain,
 	}
 
-	return &privateKeyEntry, nil
+	return privateKeyEntry, nil
 }
 
-func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (*TrustedCertificateEntry, error) {
+func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (TrustedCertificateEntry, error) {
 	creationTimeStamp, err := ksd.readUint64()
 	if err != nil {
-		return nil, fmt.Errorf("read creation timestamp: %w", err)
+		return TrustedCertificateEntry{}, fmt.Errorf("read creation timestamp: %w", err)
 	}
 
 	certificate, err := ksd.readCertificate(version)
 	if err != nil {
-		return nil, fmt.Errorf("read certificate: %w", err)
+		return TrustedCertificateEntry{}, fmt.Errorf("read certificate: %w", err)
 	}
 
 	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
 	trustedCertificateEntry := TrustedCertificateEntry{
-		Entry: Entry{
-			CreationTime: creationDateTime,
-		},
-		Certificate: *certificate,
+		CreationTime: creationDateTime,
+		Certificate:  certificate,
 	}
 
-	return &trustedCertificateEntry, nil
+	return trustedCertificateEntry, nil
 }
 
-func (ksd *keyStoreDecoder) readEntry(
-	version uint32, storePassword []byte, keysPasswords ...KeyPassword,
-) (string, interface{}, error) {
+func (ksd *keyStoreDecoder) readEntry(version uint32) (string, interface{}, error) {
 	tag, err := ksd.readUint32()
 	if err != nil {
 		return "", nil, fmt.Errorf("read tag: %w", err)
@@ -218,15 +205,7 @@ func (ksd *keyStoreDecoder) readEntry(
 
 	switch tag {
 	case privateKeyTag:
-		keyPassword := storePassword
-
-		for _, kp := range keysPasswords {
-			if kp.Alias == alias {
-				keyPassword = kp.Password
-			}
-		}
-
-		entry, err := ksd.readPrivateKeyEntry(version, keyPassword)
+		entry, err := ksd.readPrivateKeyEntry(version)
 		if err != nil {
 			return "", nil, fmt.Errorf("read private key entry: %w", err)
 		}
@@ -242,68 +221,4 @@ func (ksd *keyStoreDecoder) readEntry(
 	default:
 		return "", nil, errors.New("got unknown entry tag")
 	}
-}
-
-// Decode reads keystore representation from r then decrypts and check signature using password.
-// It is strongly recommended to fill password slice with zero after usage.
-// keysPasswords can be used to decrypt private key entries with passwords other then storePassword.
-func Decode(r io.Reader, storePassword []byte, keysPasswords ...KeyPassword) (KeyStore, error) {
-	ksd := keyStoreDecoder{
-		r:  r,
-		md: sha1.New(),
-	}
-
-	storePasswordBytes := passwordBytes(storePassword)
-	defer zeroing(storePasswordBytes)
-
-	if _, err := ksd.md.Write(storePasswordBytes); err != nil {
-		return nil, fmt.Errorf("update digest with password: %w", err)
-	}
-
-	if _, err := ksd.md.Write(whitenerMessage); err != nil {
-		return nil, fmt.Errorf("update digest with whitener message: %w", err)
-	}
-
-	readMagic, err := ksd.readUint32()
-	if err != nil {
-		return nil, fmt.Errorf("read magic: %w", err)
-	}
-
-	if readMagic != magic {
-		return nil, errors.New("got invalid magic")
-	}
-
-	version, err := ksd.readUint32()
-	if err != nil {
-		return nil, fmt.Errorf("read version: %w", err)
-	}
-
-	entryNum, err := ksd.readUint32()
-	if err != nil {
-		return nil, fmt.Errorf("read number of entries: %w", err)
-	}
-
-	keyStore := make(KeyStore, entryNum)
-
-	for i := uint32(0); i < entryNum; i++ {
-		alias, entry, err := ksd.readEntry(version, storePassword, keysPasswords...)
-		if err != nil {
-			return nil, fmt.Errorf("read %d entry: %w", i, err)
-		}
-
-		keyStore[alias] = entry
-	}
-
-	computedDigest := ksd.md.Sum(nil)
-
-	actualDigest, err := ksd.readBytes(uint32(ksd.md.Size()))
-	if err != nil {
-		return nil, fmt.Errorf("read digest: %w", err)
-	}
-
-	if !bytes.Equal(actualDigest, computedDigest) {
-		return nil, errors.New("got invalid digest")
-	}
-
-	return keyStore, nil
 }

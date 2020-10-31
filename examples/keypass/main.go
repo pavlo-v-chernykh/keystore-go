@@ -8,20 +8,24 @@ import (
 	"github.com/pavel-v-chernykh/keystore-go/v3"
 )
 
-func readKeyStore(filename string, storePassword []byte, keysPasswords ...keystore.KeyPassword) keystore.KeyStore {
+func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	keyStore, err := keystore.Decode(f, storePassword, keysPasswords...)
-	if err != nil {
-		log.Fatal(err)
+
+	keyStore := keystore.New()
+
+	if err := keyStore.Load(f, password); err != nil {
+		log.Fatal(err) // nolint: gocritic
 	}
+
 	return keyStore
 }
 
@@ -31,21 +35,23 @@ func zeroing(s []byte) {
 	}
 }
 
+// nolint: godot
 // keytool -genkeypair -alias alias -storepass password -keypass keypassword -keyalg RSA -keystore keystore.jks
 func main() {
 	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
 	defer zeroing(password)
 
 	keyPassword := []byte{'k', 'e', 'y', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
-	defer zeroing(password)
+	defer zeroing(keyPassword)
 
-	kp := keystore.KeyPassword{Alias: "alias", Password: keyPassword}
-	ks := readKeyStore("keystore.jks", password, kp)
+	ks := readKeyStore("keystore.jks", password)
 
-	entry := ks["alias"]
-	privKeyEntry := entry.(*keystore.PrivateKeyEntry)
+	pke, err := ks.GetPrivateKeyEntry("alias", keyPassword)
+	if err != nil {
+		log.Fatal(err) // nolint: gocritic
+	}
 
-	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivateKey)
+	key, err := x509.ParsePKCS8PrivateKey(pke.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
