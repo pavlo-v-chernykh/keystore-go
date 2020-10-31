@@ -1,7 +1,7 @@
-module github.com/pavel-v-chernykh/keystore-go/v3/examples/pem
+module github.com/pavel-v-chernykh/keystore-go/v4/examples/pem
 
 go 1.14
 
-require github.com/pavel-v-chernykh/keystore-go/v3 v3.0.0
+require github.com/pavel-v-chernykh/keystore-go/v4 v4.0.0
 
-replace github.com/pavel-v-chernykh/keystore-go/v3 v3.0.0 => ../..
+replace github.com/pavel-v-chernykh/keystore-go/v4 v4.0.0 => ../..
