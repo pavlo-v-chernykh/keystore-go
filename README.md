@@ -12,8 +12,8 @@ import (
 	"log"
 	"os"
 	"reflect"
-	
-	"github.com/pavel-v-chernykh/keystore-go/v3"
+
+	"github.com/pavel-v-chernykh/keystore-go/v4"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
@@ -21,23 +21,36 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
-	keyStore, err := keystore.Decode(f, password)
-	if err != nil {
-		log.Fatal(err)
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	keyStore := keystore.New()
+	if err := keyStore.Load(f, password); err != nil {
+		log.Fatal(err) // nolint: gocritic
 	}
+
 	return keyStore
 }
 
 func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
-	o, err := os.Create(filename)
+	f, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer o.Close()
-	err = keystore.Encode(o, keyStore, password)
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	err = keyStore.Store(f, password)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) // nolint: gocritic
 	}
 }
 
@@ -56,7 +69,7 @@ func main() {
 
 	ks2 := readKeyStore("keystore2.jks", password)
 
-	log.Printf("Is equal: %v\n", reflect.DeepEqual(ks1, ks2))
+	log.Printf("is equal: %v\n", reflect.DeepEqual(ks1, ks2))
 }
 ```
 

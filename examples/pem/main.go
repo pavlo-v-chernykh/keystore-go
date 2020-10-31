@@ -16,15 +16,18 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	keyStore, err := keystore.Decode(f, password)
-	if err != nil {
-		log.Fatal(err)
+
+	keyStore := keystore.New()
+	if err := keyStore.Load(f, password); err != nil {
+		log.Fatal(err) // nolint: gocritic
 	}
+
 	return keyStore
 }
 
@@ -33,15 +36,53 @@ func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	err = keystore.Encode(f, keyStore, password)
+
+	err = keyStore.Store(f, password)
+	if err != nil {
+		log.Fatal(err) // nolint: gocritic
+	}
+}
+
+func readPrivateKey() []byte {
+	pkPEM, err := ioutil.ReadFile("./key.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	b, _ := pem.Decode(pkPEM)
+	if b == nil {
+		log.Fatal("should have at least one pem block")
+	}
+
+	if b.Type != "PRIVATE KEY" {
+		log.Fatal("should be a private key")
+	}
+
+	return b.Bytes
+}
+
+func readCertificate() []byte {
+	pkPEM, err := ioutil.ReadFile("./cert.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b, _ := pem.Decode(pkPEM)
+	if b == nil {
+		log.Fatal("should have at least one pem block")
+	}
+
+	if b.Type != "CERTIFICATE" {
+		log.Fatal("should be a certificate")
+	}
+
+	return b.Bytes
 }
 
 func zeroing(s []byte) {
@@ -50,38 +91,39 @@ func zeroing(s []byte) {
 	}
 }
 
+// nolint: godot, lll
+// openssl req -x509 -sha256 -nodes -days 365 -subj '/CN=localhost' -newkey rsa:2048 -outform pem -keyout key.pem -out cert.pem
 func main() {
-	// openssl genrsa 1024 | openssl pkcs8 -topk8 -inform pem -outform pem -nocrypt -out privkey.pem
-	pke, err := ioutil.ReadFile("./privkey.pem")
-	if err != nil {
-		log.Fatal(err)
-	}
-	p, _ := pem.Decode(pke)
-	if p == nil {
-		log.Fatal("Should have at least one pem block")
-	}
-	if p.Type != "PRIVATE KEY" {
-		log.Fatal("Should be a rsa private key")
-	}
+	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
+	defer zeroing(password)
 
-	keyStore := keystore.KeyStore{
-		"alias": &keystore.PrivateKeyEntry{
-			Entry: keystore.Entry{
-				CreationTime: time.Now(),
+	keyStore := keystore.New()
+
+	pkeIn := keystore.PrivateKeyEntry{
+		CreationTime: time.Now(),
+		PrivateKey:   readPrivateKey(),
+		CertificateChain: []keystore.Certificate{
+			{
+				Type:    "X509",
+				Content: readCertificate(),
 			},
-			PrivateKey: p.Bytes,
 		},
 	}
 
-	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
-	defer zeroing(password)
+	if err := keyStore.SetPrivateKeyEntry("alias", pkeIn, password); err != nil {
+		log.Fatal(err) // nolint: gocritic
+	}
+
 	writeKeyStore(keyStore, "keystore.jks", password)
 
 	ks := readKeyStore("keystore.jks", password)
 
-	entry := ks["alias"]
-	privKeyEntry := entry.(*keystore.PrivateKeyEntry)
-	key, err := x509.ParsePKCS8PrivateKey(privKeyEntry.PrivateKey)
+	pkeOut, err := ks.GetPrivateKeyEntry("alias", password)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(pkeOut.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
