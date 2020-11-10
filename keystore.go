@@ -88,8 +88,8 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 		return fmt.Errorf("write number of entries: %w", err)
 	}
 
-	for alias, entry := range ks.m {
-		switch typedEntry := entry.(type) {
+	for _, alias := range ks.Aliases() {
+		switch typedEntry := ks.m[alias].(type) {
 		case PrivateKeyEntry:
 			if err := kse.writePrivateKeyEntry(alias, typedEntry); err != nil {
 				return fmt.Errorf("write private key entry: %w", err)
