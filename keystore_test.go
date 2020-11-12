@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -153,8 +154,8 @@ func TestAliases(t *testing.T) {
 	}
 
 	const (
-		pkeAlias = "pkeAlias"
-		tceAlias = "tceAlias"
+		pkeAlias = "pke-alias"
+		tceAlias = "tce-alias"
 	)
 
 	if err := ks.SetPrivateKeyEntry(pkeAlias, pke, []byte("password")); err != nil {
@@ -166,7 +167,12 @@ func TestAliases(t *testing.T) {
 	}
 
 	expectedAliases := []string{pkeAlias, tceAlias}
+
+	sort.Strings(expectedAliases)
+
 	actualAliases := ks.Aliases()
+
+	sort.Strings(actualAliases)
 
 	if !reflect.DeepEqual(expectedAliases, actualAliases) {
 		t.Fatal("aliases must be equal")

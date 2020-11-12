@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,9 @@ const minPasswordLen = 6
 // KeyStore is a mapping of alias to pointer to PrivateKeyEntry or TrustedCertificateEntry.
 type KeyStore struct {
 	m map[string]interface{}
+
+	ordered   bool
+	caseExact bool
 }
 
 // PrivateKeyEntry is an entry for private keys and associated certificates.
@@ -48,9 +52,23 @@ type Certificate struct {
 	Content []byte
 }
 
+type Option func(store *KeyStore)
+
+// WithOrderedAliases sets ordered option to true. Orders aliases alphabetically.
+func WithOrderedAliases() Option { return func(ks *KeyStore) { ks.ordered = true } }
+
+// WithCaseExactAliases sets caseExact option to true. Preserves original case of aliases.
+func WithCaseExactAliases() Option { return func(ks *KeyStore) { ks.caseExact = true } }
+
 // New returns new initialized instance of the KeyStore.
-func New() KeyStore {
-	return KeyStore{m: make(map[string]interface{})}
+func New(options ...Option) KeyStore {
+	ks := KeyStore{m: make(map[string]interface{})}
+
+	for _, option := range options {
+		option(&ks)
+	}
+
+	return ks
 }
 
 // Store signs keystore using password and writes its representation into w
@@ -189,7 +207,7 @@ func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, passw
 
 	entry.encryptedPrivateKey = epk
 
-	ks.m[alias] = entry
+	ks.m[ks.convertAlias(alias)] = entry
 
 	return nil
 }
@@ -197,7 +215,7 @@ func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, passw
 // GetPrivateKeyEntry returns PrivateKeyEntry from the keystore by the alias decrypted with the password.
 // It is strongly recommended to fill password slice with zero after usage.
 func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKeyEntry, error) {
-	e, ok := ks.m[alias]
+	e, ok := ks.m[ks.convertAlias(alias)]
 	if !ok {
 		return PrivateKeyEntry{}, ErrEntryNotFound
 	}
@@ -220,7 +238,7 @@ func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKey
 
 // IsPrivateKeyEntry returns true if the keystore has PrivateKeyEntry by the alias.
 func (ks KeyStore) IsPrivateKeyEntry(alias string) bool {
-	_, ok := ks.m[alias].(PrivateKeyEntry)
+	_, ok := ks.m[ks.convertAlias(alias)].(PrivateKeyEntry)
 
 	return ok
 }
@@ -231,14 +249,14 @@ func (ks KeyStore) SetTrustedCertificateEntry(alias string, entry TrustedCertifi
 		return fmt.Errorf("validate trusted certificate entry: %w", err)
 	}
 
-	ks.m[alias] = entry
+	ks.m[ks.convertAlias(alias)] = entry
 
 	return nil
 }
 
 // GetTrustedCertificateEntry returns TrustedCertificateEntry from the keystore by the alias.
 func (ks KeyStore) GetTrustedCertificateEntry(alias string) (TrustedCertificateEntry, error) {
-	e, ok := ks.m[alias]
+	e, ok := ks.m[ks.convertAlias(alias)]
 	if !ok {
 		return TrustedCertificateEntry{}, ErrEntryNotFound
 	}
@@ -253,21 +271,37 @@ func (ks KeyStore) GetTrustedCertificateEntry(alias string) (TrustedCertificateE
 
 // IsTrustedCertificateEntry returns true if the keystore has TrustedCertificateEntry by the alias.
 func (ks KeyStore) IsTrustedCertificateEntry(alias string) bool {
-	_, ok := ks.m[alias].(TrustedCertificateEntry)
+	_, ok := ks.m[ks.convertAlias(alias)].(TrustedCertificateEntry)
 
 	return ok
 }
 
-// Aliases returns slice of all aliases from the keystore sorted alphabetically.
+// DeleteEntry deletes entry from the keystore.
+func (ks KeyStore) DeleteEntry(alias string) {
+	delete(ks.m, ks.convertAlias(alias))
+}
+
+// Aliases returns slice of all aliases from the keystore.
+// Aliases returns slice of all aliases sorted alphabetically if keystore created using WithOrderedAliases option.
 func (ks KeyStore) Aliases() []string {
 	as := make([]string, 0, len(ks.m))
 	for a := range ks.m {
 		as = append(as, a)
 	}
 
-	sort.Strings(as)
+	if ks.ordered {
+		sort.Strings(as)
+	}
 
 	return as
+}
+
+func (ks KeyStore) convertAlias(alias string) string {
+	if ks.caseExact {
+		return alias
+	}
+
+	return strings.ToLower(alias)
 }
 
 func (e PrivateKeyEntry) validate() error {
