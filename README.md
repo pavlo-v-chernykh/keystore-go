@@ -1,3 +1,5 @@
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pavel-v-chernykh/keystore-go)
+
 # Keystore
 A go (golang) implementation of Java [KeyStore][1] encoder/decoder
 
