@@ -21,14 +21,13 @@ var (
 	ErrShortPassword           = errors.New("short password")
 )
 
-const minPasswordLen = 6
-
 // KeyStore is a mapping of alias to pointer to PrivateKeyEntry or TrustedCertificateEntry.
 type KeyStore struct {
 	m map[string]interface{}
 
-	ordered   bool
-	caseExact bool
+	ordered        bool
+	caseExact      bool
+	minPasswordLen int
 }
 
 // PrivateKeyEntry is an entry for private keys and associated certificates.
@@ -54,11 +53,20 @@ type Certificate struct {
 
 type Option func(store *KeyStore)
 
-// WithOrderedAliases sets ordered option to true. Orders aliases alphabetically.
-func WithOrderedAliases() Option { return func(ks *KeyStore) { ks.ordered = true } }
+// WithOrderedAliases sets ordered option to true. Order aliases alphabetically.
+func WithOrderedAliases() Option {
+	return func(ks *KeyStore) { ks.ordered = true }
+}
 
 // WithCaseExactAliases sets caseExact option to true. Preserves original case of aliases.
-func WithCaseExactAliases() Option { return func(ks *KeyStore) { ks.caseExact = true } }
+func WithCaseExactAliases() Option {
+	return func(ks *KeyStore) { ks.caseExact = true }
+}
+
+// WithMinPasswordLen sets minPasswordLen option to minPasswordLen argument value.
+func WithMinPasswordLen(minPasswordLen int) Option {
+	return func(ks *KeyStore) { ks.minPasswordLen = minPasswordLen }
+}
 
 // New returns new initialized instance of the KeyStore.
 func New(options ...Option) KeyStore {
@@ -74,8 +82,8 @@ func New(options ...Option) KeyStore {
 // Store signs keystore using password and writes its representation into w
 // It is strongly recommended to fill password slice with zero after usage.
 func (ks KeyStore) Store(w io.Writer, password []byte) error {
-	if len(password) < minPasswordLen {
-		return fmt.Errorf("password must be at least %d characters: %w", minPasswordLen, ErrShortPassword)
+	if len(password) < ks.minPasswordLen {
+		return fmt.Errorf("password must be at least %d characters: %w", ks.minPasswordLen, ErrShortPassword)
 	}
 
 	kse := keyStoreEncoder{
@@ -196,8 +204,8 @@ func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, passw
 		return fmt.Errorf("validate private key entry: %w", err)
 	}
 
-	if len(password) < minPasswordLen {
-		return fmt.Errorf("password must be at least %d characters: %w", minPasswordLen, ErrShortPassword)
+	if len(password) < ks.minPasswordLen {
+		return fmt.Errorf("password must be at least %d characters: %w", ks.minPasswordLen, ErrShortPassword)
 	}
 
 	epk, err := encrypt(rand.Reader, entry.PrivateKey, password)
@@ -227,7 +235,7 @@ func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKey
 
 	dpk, err := decrypt(pke.encryptedPrivateKey, password)
 	if err != nil {
-		return PrivateKeyEntry{}, fmt.Errorf("decrypte private key: %w", err)
+		return PrivateKeyEntry{}, fmt.Errorf("decrypt private key: %w", err)
 	}
 
 	pke.encryptedPrivateKey = nil
