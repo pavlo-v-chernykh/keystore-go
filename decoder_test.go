@@ -13,37 +13,37 @@ import (
 )
 
 func TestReadUint16(t *testing.T) {
-	type readUint16Item struct {
+	type item struct {
 		input  []byte
 		number uint16
 		err    error
 		hash   [sha1.Size]byte
 	}
 
-	var readUint32Table = func() []readUint16Item {
-		var table []readUint16Item
-		table = append(table, readUint16Item{
+	var table = func() []item {
+		var table []item
+		table = append(table, item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("read uint16: %w", io.EOF),
+			err:    fmt.Errorf("read 2 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint16Item{
+		table = append(table, item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("read uint16: %w", io.EOF),
+			err:    fmt.Errorf("read 2 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint16Item{
+		table = append(table, item{
 			input:  []byte{1},
 			number: 0,
-			err:    fmt.Errorf("read uint16: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read 2 bytes: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 2)
 		var number uint16 = 10
 		binary.BigEndian.PutUint16(buf, number)
-		table = append(table, readUint16Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -52,7 +52,7 @@ func TestReadUint16(t *testing.T) {
 		buf = make([]byte, 2)
 		number = 0
 		binary.BigEndian.PutUint16(buf, number)
-		table = append(table, readUint16Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -62,22 +62,24 @@ func TestReadUint16(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		number, err := ksd.readUint16()
+		number, err := d.readUint16()
 		if !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 
-		if number != tt.number {
-			t.Errorf("invalid number '%v' '%v'", number, tt.number)
+		if err == nil {
+			if number != tt.number {
+				t.Errorf("invalid number '%v' '%v'", number, tt.number)
+			}
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
@@ -85,37 +87,37 @@ func TestReadUint16(t *testing.T) {
 }
 
 func TestReadUint32(t *testing.T) {
-	type readUint32Item struct {
+	type item struct {
 		input  []byte
 		number uint32
 		err    error
 		hash   [sha1.Size]byte
 	}
 
-	var readUint32Table = func() []readUint32Item {
-		var table []readUint32Item
-		table = append(table, readUint32Item{
+	var table = func() []item {
+		var table []item
+		table = append(table, item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("read uint32: %w", io.EOF),
+			err:    fmt.Errorf("read 4 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint32Item{
+		table = append(table, item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("read uint32: %w", io.EOF),
+			err:    fmt.Errorf("read 4 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint32Item{
+		table = append(table, item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    fmt.Errorf("read uint32: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read 4 bytes: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 4)
 		var number uint32 = 10
 		binary.BigEndian.PutUint32(buf, number)
-		table = append(table, readUint32Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -124,7 +126,7 @@ func TestReadUint32(t *testing.T) {
 		buf = make([]byte, 4)
 		number = 0
 		binary.BigEndian.PutUint32(buf, number)
-		table = append(table, readUint32Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -134,22 +136,24 @@ func TestReadUint32(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		number, err := ksd.readUint32()
+		number, err := d.readUint32()
 		if !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 
-		if number != tt.number {
-			t.Errorf("invalid uint32 '%v' '%v'", number, tt.number)
+		if err == nil {
+			if number != tt.number {
+				t.Errorf("invalid uint32 '%v' '%v'", number, tt.number)
+			}
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
@@ -157,31 +161,31 @@ func TestReadUint32(t *testing.T) {
 }
 
 func TestReadUint64(t *testing.T) {
-	type readUint64Item struct {
+	type item struct {
 		input  []byte
 		number uint64
 		err    error
 		hash   [sha1.Size]byte
 	}
 
-	readUint64Table := func() []readUint64Item {
-		var table []readUint64Item
-		table = append(table, readUint64Item{
+	table := func() []item {
+		var table []item
+		table = append(table, item{
 			input:  nil,
 			number: 0,
-			err:    fmt.Errorf("read uint64: %w", io.EOF),
+			err:    fmt.Errorf("read 8 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint64Item{
+		table = append(table, item{
 			input:  []byte{},
 			number: 0,
-			err:    fmt.Errorf("read uint64: %w", io.EOF),
+			err:    fmt.Errorf("read 8 bytes: %w", io.EOF),
 			hash:   sha1.Sum(nil),
 		})
-		table = append(table, readUint64Item{
+		table = append(table, item{
 			input:  []byte{1, 2, 3},
 			number: 0,
-			err:    fmt.Errorf("read uint64: %w", io.ErrUnexpectedEOF),
+			err:    fmt.Errorf("read 8 bytes: %w", io.ErrUnexpectedEOF),
 			hash:   sha1.Sum(nil),
 		})
 		buf := make([]byte, 8)
@@ -190,7 +194,7 @@ func TestReadUint64(t *testing.T) {
 
 		binary.BigEndian.PutUint64(buf, number)
 
-		table = append(table, readUint64Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -200,7 +204,7 @@ func TestReadUint64(t *testing.T) {
 		number = 0
 		binary.BigEndian.PutUint64(buf, number)
 
-		table = append(table, readUint64Item{
+		table = append(table, item{
 			input:  buf,
 			number: number,
 			err:    nil,
@@ -210,22 +214,24 @@ func TestReadUint64(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readUint64Table {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		number, err := ksd.readUint64()
+		number, err := d.readUint64()
 		if !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
 
-		if number != tt.number {
-			t.Errorf("invalid uint64 '%v' '%v'", number, tt.number)
+		if err == nil {
+			if number != tt.number {
+				t.Errorf("invalid uint64 '%v' '%v'", number, tt.number)
+			}
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
@@ -233,28 +239,28 @@ func TestReadUint64(t *testing.T) {
 }
 
 func TestReadBytes(t *testing.T) {
-	type readBytesItem struct {
+	type item struct {
 		input   []byte
 		readLen uint32
 		bytes   []byte
 		hash    [sha1.Size]byte
 	}
 
-	readUint32Table := func() []readBytesItem {
-		var table []readBytesItem
-		table = append(table, readBytesItem{
+	table := func() []item {
+		var table []item
+		table = append(table, item{
 			input:   nil,
 			readLen: 0,
-			bytes:   nil,
+			bytes:   []byte{},
 			hash:    sha1.Sum(nil),
 		})
-		table = append(table, readBytesItem{
+		table = append(table, item{
 			input:   []byte{1, 2, 3},
 			readLen: 3,
 			bytes:   []byte{1, 2, 3},
 			hash:    sha1.Sum([]byte{1, 2, 3}),
 		})
-		table = append(table, readBytesItem{
+		table = append(table, item{
 			input:   []byte{1, 2, 3},
 			readLen: 2,
 			bytes:   []byte{1, 2},
@@ -269,7 +275,7 @@ func TestReadBytes(t *testing.T) {
 			return buf
 		}()
 
-		table = append(table, readBytesItem{
+		table = append(table, item{
 			input:   buf,
 			readLen: 9 * 1024,
 			bytes:   buf[:9*1024],
@@ -279,13 +285,13 @@ func TestReadBytes(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		bts, err := ksd.readBytes(tt.readLen)
+		bts, err := d.readBytes(tt.readLen)
 		if err != nil {
 			t.Errorf("got error '%v'", err)
 		}
@@ -294,7 +300,7 @@ func TestReadBytes(t *testing.T) {
 			t.Errorf("invalid bytes '%v' '%v'", bts, tt.bytes)
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
@@ -302,32 +308,32 @@ func TestReadBytes(t *testing.T) {
 }
 
 func TestReadString(t *testing.T) {
-	type readStringItem struct {
+	type item struct {
 		input  []byte
 		string string
 		err    error
 		hash   [sha1.Size]byte
 	}
 
-	readUint32Table := func() []readStringItem {
-		var table []readStringItem
-		table = append(table, readStringItem{
+	table := func() []item {
+		var table []item
+		table = append(table, item{
 			input:  nil,
 			string: "",
 			err: fmt.Errorf("read length: %w",
-				fmt.Errorf("read uint16: %w",
+				fmt.Errorf("read 2 bytes: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
-		table = append(table, readStringItem{
+		table = append(table, item{
 			input:  []byte{},
 			string: "",
 			err: fmt.Errorf("read length: %w",
-				fmt.Errorf("read uint16: %w",
+				fmt.Errorf("read 2 bytes: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
-		table = append(table, readStringItem{
+		table = append(table, item{
 			input:  []byte{1, 2, 3},
 			string: "",
 			err: fmt.Errorf("read body: %w",
@@ -339,7 +345,7 @@ func TestReadString(t *testing.T) {
 		buf := make([]byte, 2)
 		binary.BigEndian.PutUint16(buf, uint16(len(str)))
 		buf = append(buf, []byte(str)...)
-		table = append(table, readStringItem{
+		table = append(table, item{
 			input:  buf,
 			string: str,
 			err:    nil,
@@ -349,13 +355,13 @@ func TestReadString(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readUint32Table {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		str, err := ksd.readString()
+		str, err := d.readString()
 		if !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
@@ -364,7 +370,7 @@ func TestReadString(t *testing.T) {
 			t.Errorf("invalid string '%v' '%v'", str, tt.string)
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}
@@ -372,7 +378,7 @@ func TestReadString(t *testing.T) {
 }
 
 func TestReadCertificate(t *testing.T) {
-	type readCertificateItem struct {
+	type item struct {
 		input   []byte
 		version uint32
 		cert    Certificate
@@ -380,69 +386,69 @@ func TestReadCertificate(t *testing.T) {
 		hash    [sha1.Size]byte
 	}
 
-	var readCertificateTable = func() []readCertificateItem {
-		var table []readCertificateItem
-		table = append(table, readCertificateItem{
+	var table = func() []item {
+		var table []item
+		table = append(table, item{
 			input:   nil,
 			version: version01,
 			err: fmt.Errorf("read length: %w",
-				fmt.Errorf("read uint32: %w",
+				fmt.Errorf("read 4 bytes: %w",
 					io.EOF)),
 			hash: sha1.Sum(nil),
 		})
-		table = append(table, readCertificateItem{
+		table = append(table, item{
 			input:   nil,
 			version: version02,
 			err: fmt.Errorf("read type: %w",
 				fmt.Errorf("read length: %w",
-					fmt.Errorf("read uint16: %w",
+					fmt.Errorf("read 2 bytes: %w",
 						io.EOF))),
 			hash: sha1.Sum(nil),
 		})
-		table = append(table, readCertificateItem{
+		table = append(table, item{
 			input:   nil,
 			version: 3,
 			err:     errors.New("got unknown version"),
 			hash:    sha1.Sum(nil),
 		})
-		table = append(table, func() readCertificateItem {
+		table = append(table, func() item {
 			input := []byte{0, 0, 0, 0}
 
-			return readCertificateItem{
+			return item{
 				input:   input,
 				version: version01,
 				cert: Certificate{
 					Type:    defaultCertificateType,
-					Content: nil,
+					Content: []byte{},
 				},
 				err:  nil,
 				hash: sha1.Sum(input),
 			}
 		}())
-		table = append(table, func() readCertificateItem {
+		table = append(table, func() item {
 			buf := make([]byte, 2)
 			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 0)
 
-			return readCertificateItem{
+			return item{
 				input:   buf,
 				version: version02,
 				cert: Certificate{
 					Type:    defaultCertificateType,
-					Content: nil,
+					Content: []byte{},
 				},
 				err:  nil,
 				hash: sha1.Sum(buf),
 			}
 		}())
-		table = append(table, func() readCertificateItem {
+		table = append(table, func() item {
 			buf := make([]byte, 2)
 			byteOrder.PutUint16(buf, uint16(len(defaultCertificateType)))
 			buf = append(buf, []byte(defaultCertificateType)...)
 			buf = append(buf, 0, 0, 0, 1)
 
-			return readCertificateItem{
+			return item{
 				input:   buf,
 				version: version02,
 				err: fmt.Errorf("read content: %w",
@@ -455,13 +461,13 @@ func TestReadCertificate(t *testing.T) {
 		return table
 	}()
 
-	for _, tt := range readCertificateTable {
-		ksd := keyStoreDecoder{
-			r:  bytes.NewReader(tt.input),
-			md: sha1.New(),
+	for _, tt := range table {
+		d := decoder{
+			r: bytes.NewReader(tt.input),
+			h: sha1.New(),
 		}
 
-		cert, err := ksd.readCertificate(tt.version)
+		cert, err := d.readCertificate(tt.version)
 		if !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("invalid error '%v' '%v'", err, tt.err)
 		}
@@ -470,7 +476,7 @@ func TestReadCertificate(t *testing.T) {
 			t.Errorf("invalid certificate '%v' '%v'", cert, tt.cert)
 		}
 
-		hash := ksd.md.Sum(nil)
+		hash := d.h.Sum(nil)
 		if !reflect.DeepEqual(hash, tt.hash[:]) {
 			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
 		}

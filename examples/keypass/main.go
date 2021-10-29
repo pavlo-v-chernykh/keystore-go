@@ -20,18 +20,17 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 		}
 	}()
 
-	keyStore := keystore.New()
-
-	if err := keyStore.Load(f, password); err != nil {
+	ks := keystore.New()
+	if err := ks.Load(f, password); err != nil {
 		log.Fatal(err) // nolint: gocritic
 	}
 
-	return keyStore
+	return ks
 }
 
-func zeroing(s []byte) {
-	for i := 0; i < len(s); i++ {
-		s[i] = 0
+func zeroing(buf []byte) {
+	for i := range buf {
+		buf[i] = 0
 	}
 }
 

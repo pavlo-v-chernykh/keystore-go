@@ -5,16 +5,15 @@ import (
 	"time"
 )
 
-const magic uint32 = 0xfeedfeed
 const (
+	magic uint32 = 0xfeedfeed
+
 	version01 uint32 = 1
 	version02 uint32 = 2
-)
-const (
+
 	privateKeyTag         uint32 = 1
 	trustedCertificateTag uint32 = 2
 )
-const bufSize = 1024
 
 var byteOrder = binary.BigEndian
 
@@ -30,7 +29,7 @@ func passwordBytes(password []byte) []byte {
 }
 
 func zeroing(buf []byte) {
-	for i := 0; i < len(buf); i++ {
+	for i := range buf {
 		buf[i] = 0
 	}
 }

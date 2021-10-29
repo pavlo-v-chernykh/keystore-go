@@ -9,85 +9,50 @@ import (
 
 const defaultCertificateType = "X509"
 
-type keyStoreDecoder struct {
-	r  io.Reader
-	b  [bufSize]byte
-	md hash.Hash
+type decoder struct {
+	r io.Reader
+	h hash.Hash
 }
 
-func (ksd *keyStoreDecoder) readUint16() (uint16, error) {
-	const blockSize = 2
+func (d decoder) readUint16() (uint16, error) {
+	b, err := d.readBytes(2)
 
-	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("read uint16: %w", err)
-	}
-
-	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("update digest: %w", err)
-	}
-
-	return byteOrder.Uint16(ksd.b[:blockSize]), nil
+	return byteOrder.Uint16(b), err
 }
 
-func (ksd *keyStoreDecoder) readUint32() (uint32, error) {
-	const blockSize = 4
+func (d decoder) readUint32() (uint32, error) {
+	b, err := d.readBytes(4)
 
-	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("read uint32: %w", err)
-	}
-
-	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("update digest: %w", err)
-	}
-
-	return byteOrder.Uint32(ksd.b[:blockSize]), nil
+	return byteOrder.Uint32(b), err
 }
 
-func (ksd *keyStoreDecoder) readUint64() (uint64, error) {
-	const blockSize = 8
+func (d decoder) readUint64() (uint64, error) {
+	b, err := d.readBytes(8)
 
-	if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("read uint64: %w", err)
-	}
-
-	if _, err := ksd.md.Write(ksd.b[:blockSize]); err != nil {
-		return 0, fmt.Errorf("update digest: %w", err)
-	}
-
-	return byteOrder.Uint64(ksd.b[:blockSize]), nil
+	return byteOrder.Uint64(b), err
 }
 
-func (ksd *keyStoreDecoder) readBytes(num uint32) ([]byte, error) {
-	var result []byte
+func (d decoder) readBytes(num uint32) ([]byte, error) {
+	result := make([]byte, num)
 
-	for lenToRead := num; lenToRead > 0; {
-		blockSize := lenToRead
-		if blockSize > bufSize {
-			blockSize = bufSize
-		}
-
-		if _, err := io.ReadFull(ksd.r, ksd.b[:blockSize]); err != nil {
-			return result, fmt.Errorf("read %d bytes: %w", num, err)
-		}
-
-		result = append(result, ksd.b[:blockSize]...)
-		lenToRead -= blockSize
+	if _, err := io.ReadFull(d.r, result); err != nil {
+		return result, fmt.Errorf("read %d bytes: %w", num, err)
 	}
 
-	if _, err := ksd.md.Write(result); err != nil {
+	if _, err := d.h.Write(result); err != nil {
 		return nil, fmt.Errorf("update digest: %w", err)
 	}
 
 	return result, nil
 }
 
-func (ksd *keyStoreDecoder) readString() (string, error) {
-	strLen, err := ksd.readUint16()
+func (d decoder) readString() (string, error) {
+	strLen, err := d.readUint16()
 	if err != nil {
 		return "", fmt.Errorf("read length: %w", err)
 	}
 
-	strBody, err := ksd.readBytes(uint32(strLen))
+	strBody, err := d.readBytes(uint32(strLen))
 	if err != nil {
 		return "", fmt.Errorf("read body: %w", err)
 	}
@@ -95,14 +60,14 @@ func (ksd *keyStoreDecoder) readString() (string, error) {
 	return string(strBody), nil
 }
 
-func (ksd *keyStoreDecoder) readCertificate(version uint32) (Certificate, error) {
+func (d decoder) readCertificate(version uint32) (Certificate, error) {
 	var certType string
 
 	switch version {
 	case version01:
 		certType = defaultCertificateType
 	case version02:
-		readCertType, err := ksd.readString()
+		readCertType, err := d.readString()
 		if err != nil {
 			return Certificate{}, fmt.Errorf("read type: %w", err)
 		}
@@ -112,12 +77,12 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (Certificate, error)
 		return Certificate{}, errors.New("got unknown version")
 	}
 
-	certLen, err := ksd.readUint32()
+	certLen, err := d.readUint32()
 	if err != nil {
 		return Certificate{}, fmt.Errorf("read length: %w", err)
 	}
 
-	certContent, err := ksd.readBytes(certLen)
+	certContent, err := d.readBytes(certLen)
 	if err != nil {
 		return Certificate{}, fmt.Errorf("read content: %w", err)
 	}
@@ -130,23 +95,23 @@ func (ksd *keyStoreDecoder) readCertificate(version uint32) (Certificate, error)
 	return certificate, nil
 }
 
-func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
-	creationTimeStamp, err := ksd.readUint64()
+func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
+	creationTimeStamp, err := d.readUint64()
 	if err != nil {
 		return PrivateKeyEntry{}, fmt.Errorf("read creation timestamp: %w", err)
 	}
 
-	length, err := ksd.readUint32()
+	length, err := d.readUint32()
 	if err != nil {
 		return PrivateKeyEntry{}, fmt.Errorf("read length: %w", err)
 	}
 
-	encryptedPrivateKey, err := ksd.readBytes(length)
+	encryptedPrivateKey, err := d.readBytes(length)
 	if err != nil {
 		return PrivateKeyEntry{}, fmt.Errorf("read encrypted private key: %w", err)
 	}
 
-	certNum, err := ksd.readUint32()
+	certNum, err := d.readUint32()
 	if err != nil {
 		return PrivateKeyEntry{}, fmt.Errorf("read number of certificates: %w", err)
 	}
@@ -154,7 +119,7 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry
 	chain := make([]Certificate, 0, certNum)
 
 	for i := uint32(0); i < certNum; i++ {
-		cert, err := ksd.readCertificate(version)
+		cert, err := d.readCertificate(version)
 		if err != nil {
 			return PrivateKeyEntry{}, fmt.Errorf("read %d certificate: %w", i, err)
 		}
@@ -172,13 +137,13 @@ func (ksd *keyStoreDecoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry
 	return privateKeyEntry, nil
 }
 
-func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (TrustedCertificateEntry, error) {
-	creationTimeStamp, err := ksd.readUint64()
+func (d decoder) readTrustedCertificateEntry(version uint32) (TrustedCertificateEntry, error) {
+	creationTimeStamp, err := d.readUint64()
 	if err != nil {
 		return TrustedCertificateEntry{}, fmt.Errorf("read creation timestamp: %w", err)
 	}
 
-	certificate, err := ksd.readCertificate(version)
+	certificate, err := d.readCertificate(version)
 	if err != nil {
 		return TrustedCertificateEntry{}, fmt.Errorf("read certificate: %w", err)
 	}
@@ -192,27 +157,27 @@ func (ksd *keyStoreDecoder) readTrustedCertificateEntry(version uint32) (Trusted
 	return trustedCertificateEntry, nil
 }
 
-func (ksd *keyStoreDecoder) readEntry(version uint32) (string, interface{}, error) {
-	tag, err := ksd.readUint32()
+func (d decoder) readEntry(version uint32) (string, interface{}, error) {
+	tag, err := d.readUint32()
 	if err != nil {
 		return "", nil, fmt.Errorf("read tag: %w", err)
 	}
 
-	alias, err := ksd.readString()
+	alias, err := d.readString()
 	if err != nil {
 		return "", nil, fmt.Errorf("read alias: %w", err)
 	}
 
 	switch tag {
 	case privateKeyTag:
-		entry, err := ksd.readPrivateKeyEntry(version)
+		entry, err := d.readPrivateKeyEntry(version)
 		if err != nil {
 			return "", nil, fmt.Errorf("read private key entry: %w", err)
 		}
 
 		return alias, entry, nil
 	case trustedCertificateTag:
-		entry, err := ksd.readTrustedCertificateEntry(version)
+		entry, err := d.readTrustedCertificateEntry(version)
 		if err != nil {
 			return "", nil, fmt.Errorf("read trusted certificate entry: %w", err)
 		}

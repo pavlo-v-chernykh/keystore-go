@@ -7,14 +7,7 @@ import (
 )
 
 func TestZeroing(t *testing.T) {
-	type (
-		zeroingItem struct {
-			input []byte
-		}
-		zeroingTable []zeroingItem
-	)
-
-	var table zeroingTable
+	var table [][]byte
 
 	for i := 0; i < 20; i++ {
 		buf := make([]byte, 4096)
@@ -22,27 +15,27 @@ func TestZeroing(t *testing.T) {
 			t.Errorf("read random bytes: %v", err)
 		}
 
-		table = append(table, zeroingItem{input: buf})
+		table = append(table, buf)
 	}
 
 	for _, tt := range table {
-		zeroing(tt.input)
+		zeroing(tt)
 
-		for i := range tt.input {
-			if tt.input[i] != 0 {
-				t.Errorf("fill input with zeros '%v'", tt.input)
+		for i := range tt {
+			if tt[i] != 0 {
+				t.Errorf("fill input with zeros '%v'", tt)
 			}
 		}
 	}
 }
 
 func TestPasswordBytes(t *testing.T) {
-	type passwordBytesItem struct {
+	type item struct {
 		input  []byte
 		output []byte
 	}
 
-	var table []passwordBytesItem
+	var table []item
 
 	for i := 0; i < 20; i++ {
 		input := make([]byte, 1024)
@@ -57,7 +50,7 @@ func TestPasswordBytes(t *testing.T) {
 			output[j+1] = input[k]
 		}
 
-		table = append(table, passwordBytesItem{input: input, output: output})
+		table = append(table, item{input: input, output: output})
 	}
 
 	for _, tt := range table {

@@ -8,6 +8,7 @@ linters:
     - goerr113
     - gofumpt
     - exhaustivestruct
+    - gomoddirectives
     - scopelint
     - makezero
     - golint

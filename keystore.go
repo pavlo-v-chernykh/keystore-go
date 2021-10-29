@@ -86,42 +86,42 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 		return fmt.Errorf("password must be at least %d characters: %w", ks.minPasswordLen, ErrShortPassword)
 	}
 
-	kse := keyStoreEncoder{
-		w:  w,
-		md: sha1.New(),
+	e := encoder{
+		w: w,
+		h: sha1.New(),
 	}
 
 	passwordBytes := passwordBytes(password)
 	defer zeroing(passwordBytes)
 
-	if _, err := kse.md.Write(passwordBytes); err != nil {
+	if _, err := e.h.Write(passwordBytes); err != nil {
 		return fmt.Errorf("update digest with password: %w", err)
 	}
 
-	if _, err := kse.md.Write(whitenerMessage); err != nil {
+	if _, err := e.h.Write(whitenerMessage); err != nil {
 		return fmt.Errorf("update digest with whitener message: %w", err)
 	}
 
-	if err := kse.writeUint32(magic); err != nil {
+	if err := e.writeUint32(magic); err != nil {
 		return fmt.Errorf("write magic: %w", err)
 	}
 	// always write latest version
-	if err := kse.writeUint32(version02); err != nil {
+	if err := e.writeUint32(version02); err != nil {
 		return fmt.Errorf("write version: %w", err)
 	}
 
-	if err := kse.writeUint32(uint32(len(ks.m))); err != nil {
+	if err := e.writeUint32(uint32(len(ks.m))); err != nil {
 		return fmt.Errorf("write number of entries: %w", err)
 	}
 
 	for _, alias := range ks.Aliases() {
 		switch typedEntry := ks.m[alias].(type) {
 		case PrivateKeyEntry:
-			if err := kse.writePrivateKeyEntry(alias, typedEntry); err != nil {
+			if err := e.writePrivateKeyEntry(alias, typedEntry); err != nil {
 				return fmt.Errorf("write private key entry: %w", err)
 			}
 		case TrustedCertificateEntry:
-			if err := kse.writeTrustedCertificateEntry(alias, typedEntry); err != nil {
+			if err := e.writeTrustedCertificateEntry(alias, typedEntry); err != nil {
 				return fmt.Errorf("write trusted certificate entry: %w", err)
 			}
 		default:
@@ -129,7 +129,7 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 		}
 	}
 
-	if err := kse.writeBytes(kse.md.Sum(nil)); err != nil {
+	if err := e.writeBytes(e.h.Sum(nil)); err != nil {
 		return fmt.Errorf("write digest: %w", err)
 	}
 
@@ -139,23 +139,23 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 // Load reads keystore representation from r and checks its signature.
 // It is strongly recommended to fill password slice with zero after usage.
 func (ks KeyStore) Load(r io.Reader, password []byte) error {
-	ksd := keyStoreDecoder{
-		r:  r,
-		md: sha1.New(),
+	d := decoder{
+		r: r,
+		h: sha1.New(),
 	}
 
 	passwordBytes := passwordBytes(password)
 	defer zeroing(passwordBytes)
 
-	if _, err := ksd.md.Write(passwordBytes); err != nil {
+	if _, err := d.h.Write(passwordBytes); err != nil {
 		return fmt.Errorf("update digest with password: %w", err)
 	}
 
-	if _, err := ksd.md.Write(whitenerMessage); err != nil {
+	if _, err := d.h.Write(whitenerMessage); err != nil {
 		return fmt.Errorf("update digest with whitener message: %w", err)
 	}
 
-	readMagic, err := ksd.readUint32()
+	readMagic, err := d.readUint32()
 	if err != nil {
 		return fmt.Errorf("read magic: %w", err)
 	}
@@ -164,18 +164,18 @@ func (ks KeyStore) Load(r io.Reader, password []byte) error {
 		return errors.New("got invalid magic")
 	}
 
-	version, err := ksd.readUint32()
+	version, err := d.readUint32()
 	if err != nil {
 		return fmt.Errorf("read version: %w", err)
 	}
 
-	entryNum, err := ksd.readUint32()
+	entryNum, err := d.readUint32()
 	if err != nil {
 		return fmt.Errorf("read number of entries: %w", err)
 	}
 
 	for i := uint32(0); i < entryNum; i++ {
-		alias, entry, err := ksd.readEntry(version)
+		alias, entry, err := d.readEntry(version)
 		if err != nil {
 			return fmt.Errorf("read %d entry: %w", i, err)
 		}
@@ -183,9 +183,9 @@ func (ks KeyStore) Load(r io.Reader, password []byte) error {
 		ks.m[alias] = entry
 	}
 
-	computedDigest := ksd.md.Sum(nil)
+	computedDigest := d.h.Sum(nil)
 
-	actualDigest, err := ksd.readBytes(uint32(ksd.md.Size()))
+	actualDigest, err := d.readBytes(uint32(d.h.Size()))
 	if err != nil {
 		return fmt.Errorf("read digest: %w", err)
 	}

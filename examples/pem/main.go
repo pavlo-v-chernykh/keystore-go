@@ -23,15 +23,15 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 		}
 	}()
 
-	keyStore := keystore.New()
-	if err := keyStore.Load(f, password); err != nil {
+	ks := keystore.New()
+	if err := ks.Load(f, password); err != nil {
 		log.Fatal(err) // nolint: gocritic
 	}
 
-	return keyStore
+	return ks
 }
 
-func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte) {
+func writeKeyStore(ks keystore.KeyStore, filename string, password []byte) {
 	f, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +43,7 @@ func writeKeyStore(keyStore keystore.KeyStore, filename string, password []byte)
 		}
 	}()
 
-	err = keyStore.Store(f, password)
+	err = ks.Store(f, password)
 	if err != nil {
 		log.Fatal(err) // nolint: gocritic
 	}
@@ -85,9 +85,9 @@ func readCertificate() []byte {
 	return b.Bytes
 }
 
-func zeroing(s []byte) {
-	for i := 0; i < len(s); i++ {
-		s[i] = 0
+func zeroing(buf []byte) {
+	for i := range buf {
+		buf[i] = 0
 	}
 }
 
@@ -97,7 +97,7 @@ func main() {
 	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
 	defer zeroing(password)
 
-	keyStore := keystore.New()
+	ks1 := keystore.New()
 
 	pkeIn := keystore.PrivateKeyEntry{
 		CreationTime: time.Now(),
@@ -110,15 +110,15 @@ func main() {
 		},
 	}
 
-	if err := keyStore.SetPrivateKeyEntry("alias", pkeIn, password); err != nil {
+	if err := ks1.SetPrivateKeyEntry("alias", pkeIn, password); err != nil {
 		log.Fatal(err) // nolint: gocritic
 	}
 
-	writeKeyStore(keyStore, "keystore.jks", password)
+	writeKeyStore(ks1, "keystore.jks", password)
 
-	ks := readKeyStore("keystore.jks", password)
+	ks2 := readKeyStore("keystore.jks", password)
 
-	pkeOut, err := ks.GetPrivateKeyEntry("alias", password)
+	pkeOut, err := ks2.GetPrivateKeyEntry("alias", password)
 	if err != nil {
 		log.Fatal(err)
 	}
