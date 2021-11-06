@@ -23,7 +23,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2.5.2
         with:
           args: --timeout=5m0s -c .golangci.yaml
-          version: v1.41
+          version: v1.43
   test:
     name: Test
     runs-on: ubuntu-latest
