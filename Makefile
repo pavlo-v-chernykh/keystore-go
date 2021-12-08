@@ -18,7 +18,7 @@ run-examples:
 	cd examples/compare && go run main.go
 	cd examples/keypass && go run main.go
 	cd examples/pem && go run main.go
-	cd examples/truststore && go run main.go "/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home/jre/lib/security/cacerts" "changeit"
+	cd examples/truststore && go run main.go "$(shell /usr/libexec/java_home)/lib/security/cacerts" "changeit"
 
 .PHONY: test
 test:
