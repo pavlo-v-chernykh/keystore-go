@@ -24,6 +24,7 @@ var (
 // KeyStore is a mapping of alias to pointer to PrivateKeyEntry or TrustedCertificateEntry.
 type KeyStore struct {
 	m map[string]interface{}
+	r io.Reader
 
 	ordered        bool
 	caseExact      bool
@@ -68,9 +69,17 @@ func WithMinPasswordLen(minPasswordLen int) Option {
 	return func(ks *KeyStore) { ks.minPasswordLen = minPasswordLen }
 }
 
+// WithCustomRandomNumberGenerator sets a random generator used to generate salt when encrypting private keys.
+func WithCustomRandomNumberGenerator(r io.Reader) Option {
+	return func(ks *KeyStore) { ks.r = r }
+}
+
 // New returns new initialized instance of the KeyStore.
 func New(options ...Option) KeyStore {
-	ks := KeyStore{m: make(map[string]interface{})}
+	ks := KeyStore{
+		m: make(map[string]interface{}),
+		r: rand.Reader,
+	}
 
 	for _, option := range options {
 		option(&ks)
@@ -208,7 +217,7 @@ func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, passw
 		return fmt.Errorf("password must be at least %d characters: %w", ks.minPasswordLen, ErrShortPassword)
 	}
 
-	epk, err := encrypt(rand.Reader, entry.PrivateKey, password)
+	epk, err := encrypt(ks.r, entry.PrivateKey, password)
 	if err != nil {
 		return fmt.Errorf("encrypt private key: %w", err)
 	}
