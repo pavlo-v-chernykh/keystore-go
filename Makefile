@@ -1,6 +1,6 @@
 .PHONY: fmt
 fmt:
-	go fmt github.com/pavel-v-chernykh/keystore-go/v4/...
+	go fmt github.com/pavlo-v-chernykh/keystore-go/v4/...
 
 .PHONY: lint
 lint:

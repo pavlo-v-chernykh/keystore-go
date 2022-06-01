@@ -1,4 +1,4 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pavel-v-chernykh/keystore-go)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pavlo-v-chernykh/keystore-go)
 
 # Keystore
 A go (golang) implementation of Java [KeyStore][1] encoder/decoder
@@ -15,7 +15,7 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/pavel-v-chernykh/keystore-go/v4"
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
 )
 
 func readKeyStore(filename string, password []byte) keystore.KeyStore {
@@ -82,7 +82,7 @@ For more examples explore [examples](examples) dir
 
 1. Install [go][2]
 2. Install [golangci-lint][3]
-3. Clone the repo `git clone git@github.com:pavel-v-chernykh/keystore-go.git`
+3. Clone the repo `git clone git@github.com:pavlo-v-chernykh/keystore-go.git`
 4. Go to the project dir `cd keystore-go`
 5. Run `make`  to format, test and lint
 

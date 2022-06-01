@@ -1,3 +1,3 @@
-module github.com/pavel-v-chernykh/keystore-go/v4
+module github.com/pavlo-v-chernykh/keystore-go/v4
 
-go 1.15
+go 1.17

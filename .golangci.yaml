@@ -15,6 +15,7 @@ linters:
     - interfacer
     - maligned
     - varnamelen
+    - exhaustruct
 
 linters-settings:
   gomnd:
