@@ -2,7 +2,6 @@ package keystore
 
 import (
 	"encoding/binary"
-	"time"
 )
 
 const (
@@ -32,12 +31,4 @@ func zeroing(buf []byte) {
 	for i := range buf {
 		buf[i] = 0
 	}
-}
-
-func millisecondsToTime(ms int64) time.Time {
-	return time.Unix(0, ms*int64(time.Millisecond))
-}
-
-func timeToMilliseconds(t time.Time) int64 {
-	return t.UnixNano() / int64(time.Millisecond)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"time"
 )
 
 const defaultCertificateType = "X509"
@@ -127,7 +128,7 @@ func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 		chain = append(chain, cert)
 	}
 
-	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp))
 	privateKeyEntry := PrivateKeyEntry{
 		encryptedPrivateKey: encryptedPrivateKey,
 		CreationTime:        creationDateTime,
@@ -148,7 +149,7 @@ func (d decoder) readTrustedCertificateEntry(version uint32) (TrustedCertificate
 		return TrustedCertificateEntry{}, fmt.Errorf("read certificate: %w", err)
 	}
 
-	creationDateTime := millisecondsToTime(int64(creationTimeStamp))
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp))
 	trustedCertificateEntry := TrustedCertificateEntry{
 		CreationTime: creationDateTime,
 		Certificate:  certificate,
