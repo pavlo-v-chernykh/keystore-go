@@ -3,7 +3,6 @@ package keystore
 import (
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -218,7 +217,7 @@ func TestLoad(t *testing.T) {
 		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
 	}
 
-	pkPEM, err := ioutil.ReadFile("./testdata/key.pem")
+	pkPEM, err := os.ReadFile("./testdata/key.pem")
 	if err != nil {
 		t.Fatalf("read expected private key file: %s", err)
 	}
@@ -272,7 +271,7 @@ func TestLoadKeyPassword(t *testing.T) {
 		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
 	}
 
-	pkPEM, err := ioutil.ReadFile("./testdata/key_keypass.pem")
+	pkPEM, err := os.ReadFile("./testdata/key_keypass.pem")
 	if err != nil {
 		t.Fatalf("read expected private key file: %s", err)
 	}
@@ -287,7 +286,7 @@ func TestLoadKeyPassword(t *testing.T) {
 func readPrivateKey(t *testing.T) []byte {
 	t.Helper()
 
-	pkPEM, err := ioutil.ReadFile("./testdata/key.pem")
+	pkPEM, err := os.ReadFile("./testdata/key.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +306,7 @@ func readPrivateKey(t *testing.T) []byte {
 func readCertificate(t *testing.T) []byte {
 	t.Helper()
 
-	pkPEM, err := ioutil.ReadFile("./testdata/cert.pem")
+	pkPEM, err := os.ReadFile("./testdata/cert.pem")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -25,7 +24,7 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 
 	ks := keystore.New()
 	if err := ks.Load(f, password); err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	return ks
@@ -45,12 +44,12 @@ func writeKeyStore(ks keystore.KeyStore, filename string, password []byte) {
 
 	err = ks.Store(f, password)
 	if err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 }
 
 func readPrivateKey() []byte {
-	pkPEM, err := ioutil.ReadFile("./key.pem")
+	pkPEM, err := os.ReadFile("./key.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,7 +67,7 @@ func readPrivateKey() []byte {
 }
 
 func readCertificate() []byte {
-	pkPEM, err := ioutil.ReadFile("./cert.pem")
+	pkPEM, err := os.ReadFile("./cert.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,9 +90,9 @@ func zeroing(buf []byte) {
 	}
 }
 
-// nolint: godot, lll
-// openssl req -x509 -sha256 -nodes -days 365 -subj '/CN=localhost' -newkey rsa:2048 -outform pem -keyout key.pem -out cert.pem
 func main() {
+	//nolint: lll
+	// openssl req -x509 -sha256 -nodes -days 365 -subj '/CN=localhost' -newkey rsa:2048 -outform pem -keyout key.pem -out cert.pem
 	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
 	defer zeroing(password)
 
@@ -111,7 +110,7 @@ func main() {
 	}
 
 	if err := ks1.SetPrivateKeyEntry("alias", pkeIn, password); err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	writeKeyStore(ks1, "keystore.jks", password)

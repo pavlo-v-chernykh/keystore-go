@@ -130,9 +130,9 @@ func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 
 	creationDateTime := time.UnixMilli(int64(creationTimeStamp))
 	privateKeyEntry := PrivateKeyEntry{
-		encryptedPrivateKey: encryptedPrivateKey,
-		CreationTime:        creationDateTime,
-		CertificateChain:    chain,
+		PrivateKey:       encryptedPrivateKey,
+		CreationTime:     creationDateTime,
+		CertificateChain: chain,
 	}
 
 	return privateKeyEntry, nil

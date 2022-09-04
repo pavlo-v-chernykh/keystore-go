@@ -22,7 +22,7 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 
 	ks := keystore.New()
 	if err := ks.Load(f, password); err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	return ks
@@ -34,9 +34,8 @@ func zeroing(buf []byte) {
 	}
 }
 
-// nolint: godot
-// keytool -genkeypair -alias alias -storepass password -keypass keypassword -keyalg RSA -keystore keystore.jks
 func main() {
+	// keytool -genkeypair -alias alias -storepass password -keypass keypassword -keyalg RSA -keystore keystore.jks
 	password := []byte{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}
 	defer zeroing(password)
 
@@ -47,7 +46,7 @@ func main() {
 
 	pke, err := ks.GetPrivateKeyEntry("alias", keyPassword)
 	if err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	key, err := x509.ParsePKCS8PrivateKey(pke.PrivateKey)

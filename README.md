@@ -32,7 +32,7 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 
 	ks := keystore.New()
 	if err := ks.Load(f, password); err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	return ks
@@ -52,7 +52,7 @@ func writeKeyStore(ks keystore.KeyStore, filename string, password []byte) {
 
 	err = ks.Store(f, password)
 	if err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 }
 
