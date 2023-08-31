@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/pem"
-	"io/ioutil"
 	"log"
 	"os"
 	"reflect"
@@ -14,7 +13,7 @@ import (
 type nonRand struct {
 }
 
-func (r nonRand) Read(p []byte) (n int, err error) {
+func (r nonRand) Read(p []byte) (int, error) {
 	for i := range p {
 		p[i] = 1
 	}
@@ -61,7 +60,7 @@ func writeKeyStore(ks keystore.KeyStore, filename string, password []byte) {
 }
 
 func readPrivateKey() []byte {
-	pkPEM, err := ioutil.ReadFile("./key.pem")
+	pkPEM, err := os.ReadFile("./key.pem")
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +78,7 @@ func readPrivateKey() []byte {
 }
 
 func readCertificate() []byte {
-	pkPEM, err := ioutil.ReadFile("./cert.pem")
+	pkPEM, err := os.ReadFile("./cert.pem")
 	if err != nil {
 		panic(err)
 	}

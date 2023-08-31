@@ -22,16 +22,16 @@ func readKeyStore(filename string, password []byte) keystore.KeyStore {
 
 	ks := keystore.New()
 	if err := ks.Load(f, password); err != nil {
-		log.Fatal(err) // nolint: gocritic
+		log.Fatal(err) //nolint: gocritic
 	}
 
 	return ks
 }
 
-// nolint: godot, lll
-// go run main.go "/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home/jre/lib/security/cacerts" "changeit"
 func main() {
-	if len(os.Args) < 3 { // nolint: gomnd
+	//nolint: lll
+	// go run main.go "/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home/jre/lib/security/cacerts" "changeit"
+	if len(os.Args) < 3 { //nolint: gomnd
 		log.Fatal("usage: <path> <password>")
 	}
 

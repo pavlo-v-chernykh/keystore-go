@@ -99,7 +99,7 @@ func (e encoder) writePrivateKeyEntry(alias string, pke PrivateKeyEntry) error {
 		return fmt.Errorf("write creation timestamp: %w", err)
 	}
 
-	length := uint64(len(pke.encryptedPrivateKey))
+	length := uint64(len(pke.PrivateKey))
 	if length > math.MaxUint32 {
 		return fmt.Errorf("got encrypted content %d bytes long, max length is %d", length, uint64(math.MaxUint32))
 	}
@@ -108,7 +108,7 @@ func (e encoder) writePrivateKeyEntry(alias string, pke PrivateKeyEntry) error {
 		return fmt.Errorf("filed to write length: %w", err)
 	}
 
-	if err := e.writeBytes(pke.encryptedPrivateKey); err != nil {
+	if err := e.writeBytes(pke.PrivateKey); err != nil {
 		return fmt.Errorf("write content: %w", err)
 	}
 

@@ -33,8 +33,6 @@ type KeyStore struct {
 
 // PrivateKeyEntry is an entry for private keys and associated certificates.
 type PrivateKeyEntry struct {
-	encryptedPrivateKey []byte
-
 	CreationTime     time.Time
 	PrivateKey       []byte
 	CertificateChain []Certificate
@@ -222,7 +220,7 @@ func (ks KeyStore) SetPrivateKeyEntry(alias string, entry PrivateKeyEntry, passw
 		return fmt.Errorf("encrypt private key: %w", err)
 	}
 
-	entry.encryptedPrivateKey = epk
+	entry.PrivateKey = epk
 
 	ks.m[ks.convertAlias(alias)] = entry
 
@@ -242,15 +240,30 @@ func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKey
 		return PrivateKeyEntry{}, ErrWrongEntryType
 	}
 
-	dpk, err := decrypt(pke.encryptedPrivateKey, password)
+	dpk, err := decrypt(pke.PrivateKey, password)
 	if err != nil {
 		return PrivateKeyEntry{}, fmt.Errorf("decrypt private key: %w", err)
 	}
 
-	pke.encryptedPrivateKey = nil
 	pke.PrivateKey = dpk
 
 	return pke, nil
+}
+
+// GetPrivateKeyEntryCertificateChain returns certificate chain associated with
+// PrivateKeyEntry from the keystore by the alias.
+func (ks KeyStore) GetPrivateKeyEntryCertificateChain(alias string) ([]Certificate, error) {
+	e, ok := ks.m[ks.convertAlias(alias)]
+	if !ok {
+		return nil, ErrEntryNotFound
+	}
+
+	pke, ok := e.(PrivateKeyEntry)
+	if !ok {
+		return nil, ErrWrongEntryType
+	}
+
+	return pke.CertificateChain, nil
 }
 
 // IsPrivateKeyEntry returns true if the keystore has PrivateKeyEntry by the alias.
