@@ -250,6 +250,22 @@ func (ks KeyStore) GetPrivateKeyEntry(alias string, password []byte) (PrivateKey
 	return pke, nil
 }
 
+// GetPrivateKeyEntryCertificateChain returns certificate chain associated with
+// PrivateKeyEntry from the keystore by the alias.
+func (ks KeyStore) GetPrivateKeyEntryCertificateChain(alias string) ([]Certificate, error) {
+	e, ok := ks.m[ks.convertAlias(alias)]
+	if !ok {
+		return nil, ErrEntryNotFound
+	}
+
+	pke, ok := e.(PrivateKeyEntry)
+	if !ok {
+		return nil, ErrWrongEntryType
+	}
+
+	return pke.CertificateChain, nil
+}
+
 // IsPrivateKeyEntry returns true if the keystore has PrivateKeyEntry by the alias.
 func (ks KeyStore) IsPrivateKeyEntry(alias string) bool {
 	_, ok := ks.m[ks.convertAlias(alias)].(PrivateKeyEntry)

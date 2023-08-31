@@ -51,6 +51,11 @@ func TestSetGetMethods(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	chainGet, err := ks.GetPrivateKeyEntryCertificateChain(pkeAlias)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tceGet, err := ks.GetTrustedCertificateEntry(tceAlias)
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +63,10 @@ func TestSetGetMethods(t *testing.T) {
 
 	if !reflect.DeepEqual(pke, pkeGet) {
 		t.Fatal("private key entries not equal")
+	}
+
+	if !reflect.DeepEqual(pke.CertificateChain, chainGet) {
+		t.Fatal("certificate chains of private key entries are not equal")
 	}
 
 	if !reflect.DeepEqual(tce, tceGet) {
