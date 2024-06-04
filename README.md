@@ -5,8 +5,6 @@ A go (golang) implementation of Java [KeyStore][1] encoder/decoder
 
 Take into account that JKS assumes that private keys are PKCS8 encoded.
 
-## Example
-
 For examples explore [examples](examples) directory
 
 ## Used by
