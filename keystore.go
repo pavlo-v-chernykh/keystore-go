@@ -1,7 +1,6 @@
 package keystore
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/sha1"
 	"errors"
@@ -109,7 +108,7 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 		return fmt.Errorf("update digest with whitener message: %w", err)
 	}
 
-	if err := e.writeUint32(magic); err != nil {
+	if err := e.writeBytes(jksMagicBytes); err != nil {
 		return fmt.Errorf("write magic: %w", err)
 	}
 	// always write latest version
@@ -138,67 +137,6 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 
 	if err := e.writeBytes(e.h.Sum(nil)); err != nil {
 		return fmt.Errorf("write digest: %w", err)
-	}
-
-	return nil
-}
-
-// Load reads keystore representation from r and checks its signature.
-// It is strongly recommended to fill password slice with zero after usage.
-func (ks KeyStore) Load(r io.Reader, password []byte) error {
-	d := decoder{
-		r: r,
-		h: sha1.New(),
-	}
-
-	passwordBytes := passwordBytes(password)
-	defer zeroing(passwordBytes)
-
-	if _, err := d.h.Write(passwordBytes); err != nil {
-		return fmt.Errorf("update digest with password: %w", err)
-	}
-
-	if _, err := d.h.Write(whitenerMessage); err != nil {
-		return fmt.Errorf("update digest with whitener message: %w", err)
-	}
-
-	readMagic, err := d.readUint32()
-	if err != nil {
-		return fmt.Errorf("read magic: %w", err)
-	}
-
-	if readMagic != magic {
-		return errors.New("got invalid magic")
-	}
-
-	version, err := d.readUint32()
-	if err != nil {
-		return fmt.Errorf("read version: %w", err)
-	}
-
-	entryNum, err := d.readUint32()
-	if err != nil {
-		return fmt.Errorf("read number of entries: %w", err)
-	}
-
-	for i := uint32(0); i < entryNum; i++ {
-		alias, entry, err := d.readEntry(version)
-		if err != nil {
-			return fmt.Errorf("read %d entry: %w", i, err)
-		}
-
-		ks.m[alias] = entry
-	}
-
-	computedDigest := d.h.Sum(nil)
-
-	actualDigest, err := d.readBytes(uint32(d.h.Size()))
-	if err != nil {
-		return fmt.Errorf("read digest: %w", err)
-	}
-
-	if !bytes.Equal(actualDigest, computedDigest) {
-		return errors.New("got invalid digest")
 	}
 
 	return nil
