@@ -3,6 +3,7 @@ package keystore
 import (
 	"encoding/pem"
 	"github.com/corbym/gocrest/has"
+	"github.com/corbym/gocrest/is"
 	"github.com/corbym/gocrest/then"
 	"os"
 	"reflect"
@@ -15,31 +16,23 @@ func TestLoad(t *testing.T) {
 	defer zeroing(password)
 
 	f, err := os.Open("./testdata/keystore.jks")
-	if err != nil {
-		t.Fatalf("open test data keystore file: %s", err)
-	}
+	then.AssertThat(t, err, is.Nil())
 
 	defer func() {
-		if err := f.Close(); err != nil {
-			t.Fatalf("close test data keystore file: %s", err)
-		}
+		err := f.Close()
+		then.AssertThat(t, err, is.Nil())
 	}()
 
 	keyStore := New()
 
-	if err := keyStore.Load(f, password); err != nil {
-		t.Fatalf("decode test data keystore: %s", err)
-	}
+	err = keyStore.Load(f, password)
+	then.AssertThat(t, err, is.Nil())
 
 	actualPKE, err := keyStore.GetPrivateKeyEntry("alias", password)
-	if err != nil {
-		t.Fatalf("get private key entry: %s", err)
-	}
+	then.AssertThat(t, err, is.Nil())
 
 	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2017-09-19 17:41:00.016 +0300 EEST")
-	if err != nil {
-		t.Fatalf("parse creation time: %s", err)
-	}
+	then.AssertThat(t, err, is.Nil())
 
 	if !actualPKE.CreationTime.Equal(expectedCT) {
 		t.Errorf("unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
@@ -50,9 +43,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	pkPEM, err := os.ReadFile("./testdata/key.pem")
-	if err != nil {
-		t.Fatalf("read expected private key file: %s", err)
-	}
+	then.AssertThat(t, err, is.Nil())
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
@@ -61,25 +52,20 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestLoadPkcs12(t *testing.T) {
+func TestLoadPkcs12_openjdk(t *testing.T) {
 	password := []byte("")
 
-	f, err := os.Open("./testdata/keystore_temurin_21.pkcs12")
-	if err != nil {
-		t.Fatalf("open test data keystore file: %s", err)
-	}
+	f, err := os.Open("./testdata/openjdk_temurin_21_cacerts.p12")
+	then.AssertThat(t, err, is.Nil())
 
 	defer func() {
-		if err := f.Close(); err != nil {
-			t.Fatalf("close test data keystore file: %s", err)
-		}
+		err := f.Close()
+		then.AssertThat(t, err, is.Nil())
 	}()
 
 	keyStore := New()
-
-	if err := keyStore.Load(f, password); err != nil {
-		t.Fatalf("decode test data keystore: %s", err)
-	}
+	err = keyStore.Load(f, password)
+	then.AssertThat(t, err, is.Nil())
 
 	then.AssertThat(t, keyStore.Aliases(), has.Length(148))
 }

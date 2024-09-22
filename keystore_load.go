@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"software.sslmate.com/src/go-pkcs12"
-	"time"
 )
 
 // Load reads keystore representation from r and checks its signature.
@@ -55,7 +54,7 @@ func (ks KeyStore) loadJks(r io.Reader, password []byte) error {
 		return fmt.Errorf("read magic: %w", err)
 	}
 
-	if bytes.Equal(fourBytes, jksMagicBytes) {
+	if !bytes.Equal(fourBytes, jksMagicBytes) {
 		return errors.New("got invalid magic bytes from the file, this is no JKS format")
 	}
 
@@ -99,6 +98,9 @@ func (ks KeyStore) loadPkcs12(r io.Reader, password []byte) error {
 		return err
 	}
 	certs, err := pkcs12.DecodeTrustStore(allData, string(password))
+	if err != nil {
+		return err
+	}
 	for _, cert := range certs {
 		print(cert)
 
@@ -108,7 +110,7 @@ func (ks KeyStore) loadPkcs12(r io.Reader, password []byte) error {
 		}
 
 		tce := TrustedCertificateEntry{}
-		tce.CreationTime = time.Now() // FIXME
+		tce.CreationTime = cert.NotBefore // by meaning the most fitting option, because x509 doesn't have creation time
 		tce.Certificate = certificate
 		alias := fmt.Sprintf("c_%s,o_%s,ou_%s,cn_%s,s_%s",
 			cert.Subject.Country,
