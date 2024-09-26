@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"reflect"
 	"testing"
@@ -252,7 +253,7 @@ func TestReadBytes(t *testing.T) {
 		buf := func() []byte {
 			buf := make([]byte, 10*1024)
 			_, err := rand.Read(buf)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			return buf
 		}()
@@ -274,7 +275,7 @@ func TestReadBytes(t *testing.T) {
 		}
 
 		bts, err := d.readBytes(tt.readLen)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		assert.Truef(t, reflect.DeepEqual(bts, tt.bytes), "invalid bytes '%v' '%v'", bts, tt.bytes)
 

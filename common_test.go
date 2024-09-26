@@ -3,6 +3,7 @@ package keystore
 import (
 	"crypto/rand"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestZeroing(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		buf := make([]byte, 4096)
 		_, err := rand.Read(buf)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		table = append(table, buf)
 	}
@@ -38,7 +39,7 @@ func TestPasswordBytes(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		input := make([]byte, 1024)
 		_, err := rand.Read(input)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		output := make([]byte, len(input)*2)
 
