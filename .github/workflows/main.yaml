@@ -10,7 +10,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17.10'
+          go-version: '1.22.7'
       - name: Fmt
         run: go fmt github.com/pavlo-v-chernykh/keystore-go/v4/...
   lint:
@@ -33,6 +33,6 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17.10'
+          go-version: '1.22.7'
       - name: Test
         run: go test -cover -count=1 -v github.com/pavlo-v-chernykh/keystore-go/v4/...
