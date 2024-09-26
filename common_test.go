@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"crypto/rand"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -11,9 +12,8 @@ func TestZeroing(t *testing.T) {
 
 	for i := 0; i < 20; i++ {
 		buf := make([]byte, 4096)
-		if _, err := rand.Read(buf); err != nil {
-			t.Errorf("read random bytes: %v", err)
-		}
+		_, err := rand.Read(buf)
+		assert.Nil(t, err)
 
 		table = append(table, buf)
 	}
@@ -22,9 +22,7 @@ func TestZeroing(t *testing.T) {
 		zeroing(tt)
 
 		for i := range tt {
-			if tt[i] != 0 {
-				t.Errorf("fill input with zeros '%v'", tt)
-			}
+			assert.Equalf(t, uint8(0), tt[i], "fill input with zeros '%v'", tt)
 		}
 	}
 }
@@ -39,9 +37,8 @@ func TestPasswordBytes(t *testing.T) {
 
 	for i := 0; i < 20; i++ {
 		input := make([]byte, 1024)
-		if _, err := rand.Read(input); err != nil {
-			t.Errorf("read random bytes: %v", err)
-		}
+		_, err := rand.Read(input)
+		assert.Nil(t, err)
 
 		output := make([]byte, len(input)*2)
 
@@ -55,8 +52,6 @@ func TestPasswordBytes(t *testing.T) {
 
 	for _, tt := range table {
 		output := passwordBytes(tt.input)
-		if !reflect.DeepEqual(output, tt.output) {
-			t.Errorf("convert password bytes '%v', '%v'", output, tt.output)
-		}
+		assert.Truef(t, reflect.DeepEqual(output, tt.output), "convert password bytes '%v', '%v'", output, tt.output)
 	}
 }

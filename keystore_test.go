@@ -2,7 +2,7 @@ package keystore
 
 import (
 	"encoding/pem"
-	"errors"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
 	"sort"
@@ -38,48 +38,30 @@ func TestSetGetMethods(t *testing.T) {
 
 	password := []byte("password")
 
-	if err := ks.SetPrivateKeyEntry(pkeAlias, pke, password); err != nil {
-		t.Fatal(err)
-	}
+	err := ks.SetPrivateKeyEntry(pkeAlias, pke, password)
+	assert.Nil(t, err)
 
-	if err := ks.SetTrustedCertificateEntry(tceAlias, tce); err != nil {
-		t.Fatal(err)
-	}
+	err = ks.SetTrustedCertificateEntry(tceAlias, tce)
+	assert.Nil(t, err)
 
 	pkeGet, err := ks.GetPrivateKeyEntry(pkeAlias, password)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	chainGet, err := ks.GetPrivateKeyEntryCertificateChain(pkeAlias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	tceGet, err := ks.GetTrustedCertificateEntry(tceAlias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
-	if !reflect.DeepEqual(pke, pkeGet) {
-		t.Fatal("private key entries not equal")
-	}
+	assert.True(t, reflect.DeepEqual(pke, pkeGet), "private key entries not equal")
+	assert.True(t, reflect.DeepEqual(pke.CertificateChain, chainGet), "certificate chains of private key entries are not equal")
+	assert.True(t, reflect.DeepEqual(tce, tceGet), "private key entries not equal")
 
-	if !reflect.DeepEqual(pke.CertificateChain, chainGet) {
-		t.Fatal("certificate chains of private key entries are not equal")
-	}
+	_, err = ks.GetPrivateKeyEntry(nonExistentAlias, password)
+	assert.ErrorIs(t, ErrEntryNotFound, err)
 
-	if !reflect.DeepEqual(tce, tceGet) {
-		t.Fatal("private key entries not equal")
-	}
-
-	if _, err := ks.GetPrivateKeyEntry(nonExistentAlias, password); !errors.Is(err, ErrEntryNotFound) {
-		t.Fatal(err)
-	}
-
-	if _, err := ks.GetTrustedCertificateEntry(nonExistentAlias); !errors.Is(err, ErrEntryNotFound) {
-		t.Fatal(err)
-	}
+	_, err = ks.GetTrustedCertificateEntry(nonExistentAlias)
+	assert.ErrorIs(t, ErrEntryNotFound, err)
 }
 
 func TestIsMethods(t *testing.T) {
@@ -108,37 +90,18 @@ func TestIsMethods(t *testing.T) {
 		nonExistentAlias = "nonExistentAlias"
 	)
 
-	if err := ks.SetPrivateKeyEntry(pkeAlias, pke, []byte("password")); err != nil {
-		t.Fatal(err)
-	}
+	err := ks.SetPrivateKeyEntry(pkeAlias, pke, []byte("password"))
+	assert.Nil(t, err)
 
-	if err := ks.SetTrustedCertificateEntry(tceAlias, tce); err != nil {
-		t.Fatal(err)
-	}
+	err = ks.SetTrustedCertificateEntry(tceAlias, tce)
+	assert.Nil(t, err)
 
-	if !ks.IsPrivateKeyEntry(pkeAlias) {
-		t.Fatal("must be a private key entry")
-	}
-
-	if ks.IsPrivateKeyEntry(tceAlias) {
-		t.Fatal("trusted certificate entry must be skipped")
-	}
-
-	if ks.IsPrivateKeyEntry(nonExistentAlias) {
-		t.Fatal("non existent alias must be skipped")
-	}
-
-	if !ks.IsTrustedCertificateEntry(tceAlias) {
-		t.Fatal("must be a trusted certificate entry")
-	}
-
-	if ks.IsTrustedCertificateEntry(pkeAlias) {
-		t.Fatal("private key entry must be skipped")
-	}
-
-	if ks.IsTrustedCertificateEntry(nonExistentAlias) {
-		t.Fatal("non existent alias must be skipped")
-	}
+	assert.True(t, ks.IsPrivateKeyEntry(pkeAlias), "must be a private key entry")
+	assert.False(t, ks.IsPrivateKeyEntry(tceAlias), "trusted certificate entry must be skipped")
+	assert.False(t, ks.IsPrivateKeyEntry(nonExistentAlias), "non existent alias must be skipped")
+	assert.True(t, ks.IsTrustedCertificateEntry(tceAlias), "must be a trusted certificate entry")
+	assert.False(t, ks.IsTrustedCertificateEntry(pkeAlias), "private key entry must be skipped")
+	assert.False(t, ks.IsTrustedCertificateEntry(nonExistentAlias), "non existent alias must be skipped")
 }
 
 func TestAliases(t *testing.T) {
@@ -166,13 +129,11 @@ func TestAliases(t *testing.T) {
 		tceAlias = "tce-alias"
 	)
 
-	if err := ks.SetPrivateKeyEntry(pkeAlias, pke, []byte("password")); err != nil {
-		t.Fatal(err)
-	}
+	err := ks.SetPrivateKeyEntry(pkeAlias, pke, []byte("password"))
+	assert.Nil(t, err)
 
-	if err := ks.SetTrustedCertificateEntry(tceAlias, tce); err != nil {
-		t.Fatal(err)
-	}
+	err = ks.SetTrustedCertificateEntry(tceAlias, tce)
+	assert.Nil(t, err)
 
 	expectedAliases := []string{pkeAlias, tceAlias}
 
@@ -182,9 +143,7 @@ func TestAliases(t *testing.T) {
 
 	sort.Strings(actualAliases)
 
-	if !reflect.DeepEqual(expectedAliases, actualAliases) {
-		t.Fatal("aliases must be equal")
-	}
+	assert.True(t, reflect.DeepEqual(expectedAliases, actualAliases), "aliases must be equal")
 }
 
 func TestLoad(t *testing.T) {
@@ -192,50 +151,34 @@ func TestLoad(t *testing.T) {
 	defer zeroing(password)
 
 	f, err := os.Open("./testdata/keystore.jks")
-	if err != nil {
-		t.Fatalf("open test data keystore file: %s", err)
-	}
+	assert.Nil(t, err)
 
 	defer func() {
-		if err := f.Close(); err != nil {
-			t.Fatalf("close test data keystore file: %s", err)
-		}
+		err := f.Close()
+		assert.Nil(t, err)
 	}()
 
 	keyStore := New()
 
-	if err := keyStore.Load(f, password); err != nil {
-		t.Fatalf("decode test data keystore: %s", err)
-	}
+	err = keyStore.Load(f, password)
+	assert.Nil(t, err)
 
 	actualPKE, err := keyStore.GetPrivateKeyEntry("alias", password)
-	if err != nil {
-		t.Fatalf("get private key entry: %s", err)
-	}
+	assert.Nil(t, err)
 
 	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2017-09-19 17:41:00.016 +0300 EEST")
-	if err != nil {
-		t.Fatalf("parse creation time: %s", err)
-	}
+	assert.Nil(t, err)
 
-	if !actualPKE.CreationTime.Equal(expectedCT) {
-		t.Errorf("unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
-	}
+	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT), "unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
 
-	if len(actualPKE.CertificateChain) != 0 {
-		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
-	}
+	assert.Lenf(t, actualPKE.CertificateChain, 0, "unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
 
 	pkPEM, err := os.ReadFile("./testdata/key.pem")
-	if err != nil {
-		t.Fatalf("read expected private key file: %s", err)
-	}
+	assert.Nil(t, err)
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
-	if !reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes) {
-		t.Errorf("unexpected private key")
-	}
+	assert.True(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes), "unexpected private key")
 }
 
 func TestLoadKeyPassword(t *testing.T) {
@@ -246,68 +189,45 @@ func TestLoadKeyPassword(t *testing.T) {
 	defer zeroing(keyPassword)
 
 	f, err := os.Open("./testdata/keystore_keypass.jks")
-	if err != nil {
-		t.Fatalf("open test data keystore file: %s", err)
-	}
+	assert.Nil(t, err)
 
 	defer func() {
-		if err := f.Close(); err != nil {
-			t.Fatalf("close test data keystore file: %s", err)
-		}
+		err := f.Close()
+		assert.Nil(t, err)
 	}()
 
 	keyStore := New()
 
-	if err := keyStore.Load(f, password); err != nil {
-		t.Fatalf("decode test data keystore: %s", err)
-	}
+	err = keyStore.Load(f, password)
+	assert.Nil(t, err)
 
 	actualPKE, err := keyStore.GetPrivateKeyEntry("alias", keyPassword)
-	if err != nil {
-		t.Fatalf("get private key entry: %s", err)
-	}
+	assert.Nil(t, err)
 
 	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2020-10-26 12:01:38.387 +0200 EET")
-	if err != nil {
-		t.Fatalf("parse creation time: %s", err)
-	}
+	assert.Nil(t, err)
 
-	if !actualPKE.CreationTime.Equal(expectedCT) {
-		t.Errorf("unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
-	}
+	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT), "unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
 
-	if len(actualPKE.CertificateChain) != 1 {
-		t.Errorf("unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
-	}
+	assert.Lenf(t, actualPKE.CertificateChain, 1, "unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
 
 	pkPEM, err := os.ReadFile("./testdata/key_keypass.pem")
-	if err != nil {
-		t.Fatalf("read expected private key file: %s", err)
-	}
+	assert.Nil(t, err)
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
-	if !reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes) {
-		t.Errorf("unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
-	}
+	assert.Truef(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes), "unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
 }
 
 func readPrivateKey(t *testing.T) []byte {
 	t.Helper()
 
 	pkPEM, err := os.ReadFile("./testdata/key.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	b, _ := pem.Decode(pkPEM)
-	if b == nil {
-		t.Fatal("should have at least one pem block")
-	}
-
-	if b.Type != "PRIVATE KEY" {
-		t.Fatal("should be a private key")
-	}
+	assert.NotNil(t, b, "should have at least one pem block")
+	assert.Equal(t, "PRIVATE KEY", b.Type, "should be a private key")
 
 	return b.Bytes
 }
@@ -316,18 +236,11 @@ func readCertificate(t *testing.T) []byte {
 	t.Helper()
 
 	pkPEM, err := os.ReadFile("./testdata/cert.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	b, _ := pem.Decode(pkPEM)
-	if b == nil {
-		t.Fatal("should have at least one pem block")
-	}
-
-	if b.Type != "CERTIFICATE" {
-		t.Fatal("should be a certificate")
-	}
+	assert.NotNil(t, b, "should have at least one pem block")
+	assert.Equal(t, "CERTIFICATE", b.Type, "should be a certificate")
 
 	return b.Bytes
 }

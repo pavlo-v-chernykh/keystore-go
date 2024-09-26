@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"reflect"
 	"testing"
@@ -69,20 +70,14 @@ func TestReadUint16(t *testing.T) {
 		}
 
 		number, err := d.readUint16()
-		if !reflect.DeepEqual(err, tt.err) {
-			t.Errorf("invalid error '%v' '%v'", err, tt.err)
-		}
+		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
 
 		if err == nil {
-			if number != tt.number {
-				t.Errorf("invalid number '%v' '%v'", number, tt.number)
-			}
+			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
 
@@ -143,20 +138,14 @@ func TestReadUint32(t *testing.T) {
 		}
 
 		number, err := d.readUint32()
-		if !reflect.DeepEqual(err, tt.err) {
-			t.Errorf("invalid error '%v' '%v'", err, tt.err)
-		}
+		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
 
 		if err == nil {
-			if number != tt.number {
-				t.Errorf("invalid uint32 '%v' '%v'", number, tt.number)
-			}
+			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
 
@@ -221,20 +210,14 @@ func TestReadUint64(t *testing.T) {
 		}
 
 		number, err := d.readUint64()
-		if !reflect.DeepEqual(err, tt.err) {
-			t.Errorf("invalid error '%v' '%v'", err, tt.err)
-		}
+		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
 
 		if err == nil {
-			if number != tt.number {
-				t.Errorf("invalid uint64 '%v' '%v'", number, tt.number)
-			}
+			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
 
@@ -268,9 +251,8 @@ func TestReadBytes(t *testing.T) {
 		})
 		buf := func() []byte {
 			buf := make([]byte, 10*1024)
-			if _, err := rand.Read(buf); err != nil {
-				t.Errorf("read random bytes: %v", err)
-			}
+			_, err := rand.Read(buf)
+			assert.Nil(t, err)
 
 			return buf
 		}()
@@ -292,18 +274,12 @@ func TestReadBytes(t *testing.T) {
 		}
 
 		bts, err := d.readBytes(tt.readLen)
-		if err != nil {
-			t.Errorf("got error '%v'", err)
-		}
+		assert.Nil(t, err)
 
-		if !reflect.DeepEqual(bts, tt.bytes) {
-			t.Errorf("invalid bytes '%v' '%v'", bts, tt.bytes)
-		}
+		assert.Truef(t, reflect.DeepEqual(bts, tt.bytes), "invalid bytes '%v' '%v'", bts, tt.bytes)
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
 
@@ -362,18 +338,11 @@ func TestReadString(t *testing.T) {
 		}
 
 		str, err := d.readString()
-		if !reflect.DeepEqual(err, tt.err) {
-			t.Errorf("invalid error '%v' '%v'", err, tt.err)
-		}
-
-		if str != tt.string {
-			t.Errorf("invalid string '%v' '%v'", str, tt.string)
-		}
+		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Equal(t, tt.string, str)
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
 
@@ -468,17 +437,10 @@ func TestReadCertificate(t *testing.T) {
 		}
 
 		cert, err := d.readCertificate(tt.version)
-		if !reflect.DeepEqual(err, tt.err) {
-			t.Errorf("invalid error '%v' '%v'", err, tt.err)
-		}
-
-		if !reflect.DeepEqual(cert, tt.cert) {
-			t.Errorf("invalid certificate '%v' '%v'", cert, tt.cert)
-		}
+		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Truef(t, reflect.DeepEqual(cert, tt.cert), "invalid certificate '%v' '%v'", cert, tt.cert)
 
 		hash := d.h.Sum(nil)
-		if !reflect.DeepEqual(hash, tt.hash[:]) {
-			t.Errorf("invalid hash '%v' '%v'", hash, tt.hash)
-		}
+		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
 	}
 }
