@@ -2,21 +2,24 @@ package keystore
 
 import (
 	"crypto/rand"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestZeroing(t *testing.T) {
-	var table [][]byte
+	const tableLength = 20
 
-	for i := 0; i < 20; i++ {
+	var table = make([][]byte, tableLength)
+
+	for i := range tableLength {
 		buf := make([]byte, 4096)
 		_, err := rand.Read(buf)
 		require.NoError(t, err)
 
-		table = append(table, buf)
+		table[i] = buf
 	}
 
 	for _, tt := range table {
@@ -34,9 +37,11 @@ func TestPasswordBytes(t *testing.T) {
 		output []byte
 	}
 
-	var table []item
+	const tableLength = 20
 
-	for i := 0; i < 20; i++ {
+	var table = make([]item, tableLength)
+
+	for i := range tableLength {
 		input := make([]byte, 1024)
 		_, err := rand.Read(input)
 		require.NoError(t, err)
@@ -48,7 +53,7 @@ func TestPasswordBytes(t *testing.T) {
 			output[j+1] = input[k]
 		}
 
-		table = append(table, item{input: input, output: output})
+		table[i] = item{input: input, output: output}
 	}
 
 	for _, tt := range table {

@@ -7,11 +7,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadUint16(t *testing.T) {
@@ -320,7 +321,7 @@ func TestReadString(t *testing.T) {
 		})
 		str := "some string to read"
 		buf := make([]byte, 2)
-		binary.BigEndian.PutUint16(buf, uint16(len(str)))
+		binary.BigEndian.PutUint16(buf, uint16(len(str))) //nolint:all
 		buf = append(buf, []byte(str)...)
 		table = append(table, item{
 			input:  buf,

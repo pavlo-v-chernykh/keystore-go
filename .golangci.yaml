@@ -27,6 +27,8 @@ linters-settings:
 
 
 issues:
+  exclude:
+    - import '.*' is not allowed from list 'Main'
   exclude-rules:
     - path: _test\.go
       linters:

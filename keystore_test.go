@@ -2,13 +2,14 @@ package keystore
 
 import (
 	"encoding/pem"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetGetMethods(t *testing.T) {
@@ -55,7 +56,8 @@ func TestSetGetMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, reflect.DeepEqual(pke, pkeGet), "private key entries not equal")
-	assert.True(t, reflect.DeepEqual(pke.CertificateChain, chainGet), "certificate chains of private key entries are not equal")
+	assert.True(t, reflect.DeepEqual(pke.CertificateChain, chainGet),
+		"certificate chains of private key entries are not equal")
 	assert.True(t, reflect.DeepEqual(tce, tceGet), "private key entries not equal")
 
 	_, err = ks.GetPrivateKeyEntry(nonExistentAlias, password)
@@ -170,9 +172,10 @@ func TestLoad(t *testing.T) {
 	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2017-09-19 17:41:00.016 +0300 EEST")
 	require.NoError(t, err)
 
-	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT), "unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
+	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT),
+		"unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
 
-	assert.Lenf(t, actualPKE.CertificateChain, 0, "unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
+	assert.Empty(t, actualPKE.CertificateChain, "unexpected private key entry certificate chain length")
 
 	pkPEM, err := os.ReadFile("./testdata/key.pem")
 	require.NoError(t, err)
@@ -208,16 +211,19 @@ func TestLoadKeyPassword(t *testing.T) {
 	expectedCT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "2020-10-26 12:01:38.387 +0200 EET")
 	require.NoError(t, err)
 
-	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT), "unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
+	assert.Truef(t, actualPKE.CreationTime.Equal(expectedCT),
+		"unexpected private key entry creation time: '%v' '%v'", actualPKE.CreationTime, expectedCT)
 
-	assert.Lenf(t, actualPKE.CertificateChain, 1, "unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
+	assert.Lenf(t, actualPKE.CertificateChain, 1,
+		"unexpected private key entry certificate chain length: '%d' '%d'", len(actualPKE.CertificateChain), 0)
 
 	pkPEM, err := os.ReadFile("./testdata/key_keypass.pem")
 	require.NoError(t, err)
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
-	assert.Truef(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes), "unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
+	assert.Truef(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes),
+		"unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
 }
 
 func readPrivateKey(t *testing.T) []byte {

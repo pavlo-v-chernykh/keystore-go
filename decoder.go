@@ -119,7 +119,7 @@ func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 
 	chain := make([]Certificate, 0, certNum)
 
-	for i := uint32(0); i < certNum; i++ {
+	for i := range certNum {
 		cert, err := d.readCertificate(version)
 		if err != nil {
 			return PrivateKeyEntry{}, fmt.Errorf("read %d certificate: %w", i, err)
@@ -128,7 +128,7 @@ func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 		chain = append(chain, cert)
 	}
 
-	creationDateTime := time.UnixMilli(int64(creationTimeStamp))
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:all
 	privateKeyEntry := PrivateKeyEntry{
 		PrivateKey:       encryptedPrivateKey,
 		CreationTime:     creationDateTime,
@@ -149,7 +149,7 @@ func (d decoder) readTrustedCertificateEntry(version uint32) (TrustedCertificate
 		return TrustedCertificateEntry{}, fmt.Errorf("read certificate: %w", err)
 	}
 
-	creationDateTime := time.UnixMilli(int64(creationTimeStamp))
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:all
 	trustedCertificateEntry := TrustedCertificateEntry{
 		CreationTime: creationDateTime,
 		Certificate:  certificate,

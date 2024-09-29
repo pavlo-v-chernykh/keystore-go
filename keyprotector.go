@@ -133,7 +133,7 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	}
 
 	tmpKey := make([]byte, plainKeyLen)
-	for i := 0; i < plainKeyLen; i++ {
+	for i := range plainKeyLen {
 		tmpKey[i] = plainKey[i] ^ xorKey[i]
 	}
 
