@@ -5,7 +5,7 @@ linters:
   disable:
     - gochecknoglobals
     - funlen
-    - goerr113
+    - err113
     - gofumpt
     - gomoddirectives
     - makezero
