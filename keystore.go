@@ -117,7 +117,7 @@ func (ks KeyStore) Store(w io.Writer, password []byte) error {
 		return fmt.Errorf("write version: %w", err)
 	}
 
-	if err := e.writeUint32(uint32(len(ks.m))); err != nil {
+	if err := e.writeUint32(uint32(len(ks.m))); err != nil { //nolint:gosec
 		return fmt.Errorf("write number of entries: %w", err)
 	}
 
@@ -181,7 +181,7 @@ func (ks KeyStore) Load(r io.Reader, password []byte) error {
 		return fmt.Errorf("read number of entries: %w", err)
 	}
 
-	for i := uint32(0); i < entryNum; i++ {
+	for i := range entryNum {
 		alias, entry, err := d.readEntry(version)
 		if err != nil {
 			return fmt.Errorf("read %d entry: %w", i, err)
@@ -192,7 +192,7 @@ func (ks KeyStore) Load(r io.Reader, password []byte) error {
 
 	computedDigest := d.h.Sum(nil)
 
-	actualDigest, err := d.readBytes(uint32(d.h.Size()))
+	actualDigest, err := d.readBytes(uint32(d.h.Size())) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("read digest: %w", err)
 	}

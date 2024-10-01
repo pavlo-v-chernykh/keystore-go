@@ -95,7 +95,7 @@ func (e encoder) writePrivateKeyEntry(alias string, pke PrivateKeyEntry) error {
 		return fmt.Errorf("write alias: %w", err)
 	}
 
-	if err := e.writeUint64(uint64(pke.CreationTime.UnixMilli())); err != nil {
+	if err := e.writeUint64(uint64(pke.CreationTime.UnixMilli())); err != nil { //nolint:gosec
 		return fmt.Errorf("write creation timestamp: %w", err)
 	}
 
@@ -140,7 +140,7 @@ func (e encoder) writeTrustedCertificateEntry(alias string, tce TrustedCertifica
 		return fmt.Errorf("write alias: %w", err)
 	}
 
-	if err := e.writeUint64(uint64(tce.CreationTime.UnixMilli())); err != nil {
+	if err := e.writeUint64(uint64(tce.CreationTime.UnixMilli())); err != nil { //nolint:gosec
 		return fmt.Errorf("write creation timestamp: %w", err)
 	}
 
