@@ -3,7 +3,6 @@ package keystore
 import (
 	"encoding/pem"
 	"os"
-	"reflect"
 	"sort"
 	"testing"
 	"time"
@@ -48,17 +47,15 @@ func TestSetGetMethods(t *testing.T) {
 
 	pkeGet, err := ks.GetPrivateKeyEntry(pkeAlias, password)
 	require.NoError(t, err)
+	assert.Equal(t, pke, pkeGet)
 
 	chainGet, err := ks.GetPrivateKeyEntryCertificateChain(pkeAlias)
 	require.NoError(t, err)
+	assert.Equal(t, pke.CertificateChain, chainGet)
 
 	tceGet, err := ks.GetTrustedCertificateEntry(tceAlias)
 	require.NoError(t, err)
-
-	assert.True(t, reflect.DeepEqual(pke, pkeGet), "private key entries not equal")
-	assert.True(t, reflect.DeepEqual(pke.CertificateChain, chainGet),
-		"certificate chains of private key entries are not equal")
-	assert.True(t, reflect.DeepEqual(tce, tceGet), "private key entries not equal")
+	assert.Equal(t, tce, tceGet)
 
 	_, err = ks.GetPrivateKeyEntry(nonExistentAlias, password)
 	require.ErrorIs(t, err, ErrEntryNotFound)
@@ -139,14 +136,12 @@ func TestAliases(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedAliases := []string{pkeAlias, tceAlias}
-
 	sort.Strings(expectedAliases)
 
 	actualAliases := ks.Aliases()
-
 	sort.Strings(actualAliases)
 
-	assert.True(t, reflect.DeepEqual(expectedAliases, actualAliases), "aliases must be equal")
+	assert.Equal(t, expectedAliases, actualAliases)
 }
 
 func TestLoad(t *testing.T) {
@@ -182,7 +177,7 @@ func TestLoad(t *testing.T) {
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
-	assert.True(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes), "unexpected private key")
+	assert.Equal(t, decodedPK.Bytes, actualPKE.PrivateKey, "unexpected private key")
 }
 
 func TestLoadKeyPassword(t *testing.T) {
@@ -222,8 +217,7 @@ func TestLoadKeyPassword(t *testing.T) {
 
 	decodedPK, _ := pem.Decode(pkPEM)
 
-	assert.Truef(t, reflect.DeepEqual(actualPKE.PrivateKey, decodedPK.Bytes),
-		"unexpected private key %v \n %v", actualPKE.PrivateKey, decodedPK.Bytes)
+	assert.Equal(t, decodedPK.Bytes, actualPKE.PrivateKey, "unexpected private key")
 }
 
 func readPrivateKey(t *testing.T) []byte {

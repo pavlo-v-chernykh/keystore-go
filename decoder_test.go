@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,14 +71,14 @@ func TestReadUint16(t *testing.T) {
 		}
 
 		number, err := d.readUint16()
-		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Equal(t, tt.err, err)
 
 		if err == nil {
 			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }
 
@@ -140,14 +139,14 @@ func TestReadUint32(t *testing.T) {
 		}
 
 		number, err := d.readUint32()
-		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Equal(t, tt.err, err)
 
 		if err == nil {
 			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }
 
@@ -212,14 +211,14 @@ func TestReadUint64(t *testing.T) {
 		}
 
 		number, err := d.readUint64()
-		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Equal(t, tt.err, err)
 
 		if err == nil {
 			assert.Equal(t, tt.number, number)
 		}
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }
 
@@ -278,10 +277,10 @@ func TestReadBytes(t *testing.T) {
 		bts, err := d.readBytes(tt.readLen)
 		require.NoError(t, err)
 
-		assert.Truef(t, reflect.DeepEqual(bts, tt.bytes), "invalid bytes '%v' '%v'", bts, tt.bytes)
+		assert.Equal(t, tt.bytes, bts)
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }
 
@@ -321,7 +320,7 @@ func TestReadString(t *testing.T) {
 		})
 		str := "some string to read"
 		buf := make([]byte, 2)
-		binary.BigEndian.PutUint16(buf, uint16(len(str))) //nolint:all
+		binary.BigEndian.PutUint16(buf, uint16(len(str))) //nolint:gosec
 		buf = append(buf, []byte(str)...)
 		table = append(table, item{
 			input:  buf,
@@ -340,11 +339,11 @@ func TestReadString(t *testing.T) {
 		}
 
 		str, err := d.readString()
-		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
+		assert.Equal(t, tt.err, err)
 		assert.Equal(t, tt.string, str)
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }
 
@@ -439,10 +438,10 @@ func TestReadCertificate(t *testing.T) {
 		}
 
 		cert, err := d.readCertificate(tt.version)
-		assert.Truef(t, reflect.DeepEqual(err, tt.err), "invalid error '%v' '%v'", err, tt.err)
-		assert.Truef(t, reflect.DeepEqual(cert, tt.cert), "invalid certificate '%v' '%v'", cert, tt.cert)
+		assert.Equal(t, tt.err, err)
+		assert.Equal(t, tt.cert, cert)
 
 		hash := d.h.Sum(nil)
-		assert.Truef(t, reflect.DeepEqual(hash, tt.hash[:]), "invalid hash '%v' '%v'", hash, tt.hash)
+		assert.Equal(t, tt.hash[:], hash)
 	}
 }

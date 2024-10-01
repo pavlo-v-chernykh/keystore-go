@@ -2,7 +2,6 @@ package keystore
 
 import (
 	"crypto/rand"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,6 +57,6 @@ func TestPasswordBytes(t *testing.T) {
 
 	for _, tt := range table {
 		output := passwordBytes(tt.input)
-		assert.Truef(t, reflect.DeepEqual(output, tt.output), "convert password bytes '%v', '%v'", output, tt.output)
+		assert.Equal(t, tt.output, output, "convert password bytes")
 	}
 }

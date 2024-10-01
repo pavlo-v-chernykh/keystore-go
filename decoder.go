@@ -128,7 +128,7 @@ func (d decoder) readPrivateKeyEntry(version uint32) (PrivateKeyEntry, error) {
 		chain = append(chain, cert)
 	}
 
-	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:all
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:gosec
 	privateKeyEntry := PrivateKeyEntry{
 		PrivateKey:       encryptedPrivateKey,
 		CreationTime:     creationDateTime,
@@ -149,7 +149,7 @@ func (d decoder) readTrustedCertificateEntry(version uint32) (TrustedCertificate
 		return TrustedCertificateEntry{}, fmt.Errorf("read certificate: %w", err)
 	}
 
-	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:all
+	creationDateTime := time.UnixMilli(int64(creationTimeStamp)) //nolint:gosec
 	trustedCertificateEntry := TrustedCertificateEntry{
 		CreationTime: creationDateTime,
 		Certificate:  certificate,
