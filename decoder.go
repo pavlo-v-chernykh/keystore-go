@@ -16,19 +16,19 @@ type decoder struct {
 }
 
 func (d decoder) readUint16() (uint16, error) {
-	b, err := d.readBytes(2)
+	b, err := d.readBytes(2) //nolint:gomnd,mnd
 
 	return byteOrder.Uint16(b), err
 }
 
 func (d decoder) readUint32() (uint32, error) {
-	b, err := d.readBytes(4)
+	b, err := d.readBytes(4) //nolint:gomnd,mnd
 
 	return byteOrder.Uint32(b), err
 }
 
 func (d decoder) readUint64() (uint64, error) {
-	b, err := d.readBytes(8)
+	b, err := d.readBytes(8) //nolint:gomnd,mnd
 
 	return byteOrder.Uint64(b), err
 }

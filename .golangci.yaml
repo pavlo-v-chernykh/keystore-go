@@ -18,10 +18,6 @@ linters:
     - exhaustruct
 
 linters-settings:
-  gomnd:
-    settings:
-      mnd:
-        checks: [case, condition, return]
   cyclop:
     max-complexity: 15
 

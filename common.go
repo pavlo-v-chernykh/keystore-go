@@ -19,7 +19,7 @@ var byteOrder = binary.BigEndian
 var whitenerMessage = []byte("Mighty Aphrodite")
 
 func passwordBytes(password []byte) []byte {
-	result := make([]byte, 0, len(password)*2)
+	result := make([]byte, 0, len(password)*2) //nolint:gomnd,mnd
 	for _, b := range password {
 		result = append(result, 0, b)
 	}

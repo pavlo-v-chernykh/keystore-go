@@ -159,7 +159,7 @@ func encrypt(rand io.Reader, plainKey []byte, password []byte) ([]byte, error) {
 	keyInfo := keyInfo{
 		Algo: pkix.AlgorithmIdentifier{
 			Algorithm:  supportedPrivateKeyAlgorithmOid,
-			Parameters: asn1.RawValue{Tag: 5},
+			Parameters: asn1.RawValue{Tag: 5}, //nolint:gomnd,mnd
 		},
 		PrivateKey: encryptedKey,
 	}
