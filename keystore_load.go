@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
 	"software.sslmate.com/src/go-pkcs12"
 )
 
@@ -120,10 +121,10 @@ func (ks KeyStore) loadPkcs12(r io.Reader, password []byte) error {
 			cert.Subject.CommonName,
 			cert.Subject.SerialNumber,
 		)
-		//Country, Organization, OrganizationalUnit []string
-		//Locality, Province                        []string
-		//StreetAddress, PostalCode                 []string
-		//SerialNumber, CommonName                  string
+		// Country, Organization, OrganizationalUnit []string
+		// Locality, Province                        []string
+		// StreetAddress, PostalCode                 []string
+		// SerialNumber, CommonName                  string
 		ks.m[alias] = tce
 	}
 

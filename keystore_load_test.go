@@ -1,6 +1,8 @@
 package keystore
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/pem"
 	"os"
 	"testing"
@@ -86,21 +88,30 @@ func TestLoadKeyPassword(t *testing.T) {
 	assert.Equal(t, decodedPK.Bytes, actualPKE.PrivateKey, "unexpected private key")
 }
 
-func TestLoadPkcs12(t *testing.T) {
+//go:embed testdata/keystore_temurin_openjdk_21.0.4_lts.p12
+var fileTemurinOpenJdkKeystore []byte
+
+func TestLoadPkcs12NoPassword(t *testing.T) {
 	password := []byte("")
-
-	f, err := os.Open("./testdata/keystore_temurin_openjdk_21.0.4_lts.p12")
-	require.NoError(t, err)
-
-	defer func() {
-		err := f.Close()
-		require.NoError(t, err)
-	}()
+	temurinOpenJdkKeystore := bytes.NewReader(fileTemurinOpenJdkKeystore)
 
 	keyStore := New()
-
-	err = keyStore.Load(f, password)
+	err := keyStore.Load(temurinOpenJdkKeystore, password)
 	require.NoError(t, err)
 
 	assert.Len(t, keyStore.Aliases(), 148)
+}
+
+//go:embed testdata/self_signed_certificate/cert.p12
+var fileSelfSignedCertP12 []byte
+
+func TestLoadPkcs12WithPassword(t *testing.T) {
+	password := []byte("password")
+	selfSignedCert := bytes.NewReader(fileSelfSignedCertP12)
+
+	keyStore := New()
+	err := keyStore.Load(selfSignedCert, password)
+	require.NoError(t, err)
+
+	assert.Len(t, keyStore.Aliases(), 1)
 }
