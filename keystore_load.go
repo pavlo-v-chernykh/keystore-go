@@ -125,7 +125,7 @@ func (ks KeyStore) loadPkcs12(r io.Reader, password []byte) error {
 		// Locality, Province                        []string
 		// StreetAddress, PostalCode                 []string
 		// SerialNumber, CommonName                  string
-		ks.m[alias] = tce
+		ks.m[ks.convertAlias(alias)] = tce
 	}
 
 	return nil

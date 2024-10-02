@@ -25,6 +25,7 @@ openssl pkcs12 -export -out cert.p12 -in cert.pem -inkey key.pem -passin pass:pa
 When `openssl req ...` asks you for some certificate subject information, enter the following values:
 
 ```text
+Enter PEM pass phrase:pass
 Country Name (2 letter code) [AU]:de
 State or Province Name (full name) [Some-State]:Brandenburg
 Locality Name (eg, city) []:Potsdam
