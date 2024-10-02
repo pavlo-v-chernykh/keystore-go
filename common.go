@@ -5,14 +5,14 @@ import (
 )
 
 const (
-	magic uint32 = 0xfeedfeed
-
 	version01 uint32 = 1
 	version02 uint32 = 2
 
 	privateKeyTag         uint32 = 1
 	trustedCertificateTag uint32 = 2
 )
+
+var jksMagicBytes = []byte{0xfe, 0xed, 0xfe, 0xed}
 
 var byteOrder = binary.BigEndian
 
