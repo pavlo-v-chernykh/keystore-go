@@ -88,30 +88,126 @@ func TestLoadKeyPassword(t *testing.T) {
 	assert.Equal(t, decodedPK.Bytes, actualPKE.PrivateKey, "unexpected private key")
 }
 
-//go:embed testdata/keystore_temurin_openjdk_21.0.4_lts.p12
-var fileTemurinOpenJdkKeystore []byte
+//go:embed testdata/java/adoptium_openjdk_21.0.4_lts/cacerts
+var fileJavaTemurinOpenJdk21Cacerts []byte
 
-func TestLoadPkcs12NoPassword(t *testing.T) {
-	password := []byte("")
-	temurinOpenJdkKeystore := bytes.NewReader(fileTemurinOpenJdkKeystore)
+//go:embed testdata/java/adoptium_openjdk_23.0.1.11/cacerts
+var fileJavaTemurinOpenJdk23Cacerts []byte
 
-	keyStore := New()
-	err := keyStore.Load(temurinOpenJdkKeystore, password)
-	require.NoError(t, err)
+//go:embed testdata/java/corretto-8.432.06.1/cacerts
+var fileJavaCorretto8Cacerts []byte
 
-	assert.Len(t, keyStore.Aliases(), 148)
+//go:embed testdata/java/corretto-11.0.25.9.1/cacerts
+var fileJavaCorretto11Cacerts []byte
+
+//go:embed testdata/java/oracle_openjdk_17.0.6/cacerts
+var fileJavaOracleOpenJdk17Cacerts []byte
+
+func TestLoadVariousJdkTruststores(t *testing.T) {
+
+	tests := []struct {
+		name                 string
+		certData             []byte
+		numberOfCertificates int
+		password             string
+	}{
+		{
+			name:                 "adoptium_openjdk_21.0.4_lts",
+			certData:             fileJavaTemurinOpenJdk21Cacerts,
+			password:             "",
+			numberOfCertificates: 148,
+		},
+		{
+			name:                 "adoptium_openjdk_23.0.1.11",
+			certData:             fileJavaTemurinOpenJdk23Cacerts,
+			password:             "",
+			numberOfCertificates: 152,
+		},
+		{
+			name:                 "corretto-8.432.06.1",
+			certData:             fileJavaCorretto8Cacerts,
+			password:             "changeit",
+			numberOfCertificates: 161,
+		},
+		{
+			name:                 "corretto-11.0.25.9.1",
+			certData:             fileJavaCorretto11Cacerts,
+			password:             "changeit",
+			numberOfCertificates: 161,
+		},
+		{
+			name:                 "oracle_openjdk_17.0.6",
+			certData:             fileJavaOracleOpenJdk17Cacerts,
+			password:             "changeit",
+			numberOfCertificates: 90,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			password := []byte(tt.password)
+			adoptiumOpenJdkKeystore := bytes.NewReader(tt.certData)
+
+			keyStore := New()
+			err := keyStore.Load(adoptiumOpenJdkKeystore, password)
+			require.NoError(t, err)
+
+			assert.Len(t, keyStore.Aliases(), tt.numberOfCertificates)
+		})
+	}
 }
 
-//go:embed testdata/self_signed_certificate/cert.p12
-var fileSelfSignedCertP12 []byte
+////go:embed testdata/certificate_chain/truststore.p12
+//var fileCertificateChainTruststoreP12 []byte
+//
+//func TestLoadPkcs12WithPassword(t *testing.T) {
+//	password := []byte("password")
+//	selfSignedCert := bytes.NewReader(fileCertificateChainTruststoreP12)
+//
+//	keyStore := New()
+//	err := keyStore.Load(selfSignedCert, password)
+//	require.NoError(t, err)
+//
+//	assert.Len(t, keyStore.Aliases(), 1)
+//}
 
-func TestLoadPkcs12WithPassword(t *testing.T) {
+//go:embed testdata/certificate_chain/example_signed_certificates_chain.p12
+var fileCertificateChainExampleSignedCertificateChainP12 []byte
+
+func TestLoadPkcs12WithCertficateChain(t *testing.T) {
 	password := []byte("password")
-	selfSignedCert := bytes.NewReader(fileSelfSignedCertP12)
+	selfSignedCert := bytes.NewReader(fileCertificateChainExampleSignedCertificateChainP12)
 
 	keyStore := New()
 	err := keyStore.Load(selfSignedCert, password)
 	require.NoError(t, err)
 
-	assert.Len(t, keyStore.Aliases(), 1)
+	assert.Len(t, keyStore.Aliases(), 2)
+
+	for _, alias := range keyStore.Aliases() {
+		chain, err := keyStore.GetPrivateKeyEntryCertificateChain(alias)
+		require.NoError(t, err)
+
+		assert.NotNil(t, chain)
+	}
 }
+
+////go:embed testdata/x.p12
+//var x []byte
+
+//func TestX(t *testing.T) {
+//	password := []byte("password")
+//	selfSignedCert := bytes.NewReader(x)
+//
+//	keyStore := New()
+//	err := keyStore.Load(selfSignedCert, password)
+//	require.NoError(t, err)
+//
+//	//assert.Len(t, keyStore.Aliases(), 2)
+//
+//	for _, alias := range keyStore.Aliases() {
+//		chain, err := keyStore.GetPrivateKeyEntryCertificateChain(alias)
+//		require.NoError(t, err)
+//
+//		assert.NotNil(t, chain)
+//	}
+//}
